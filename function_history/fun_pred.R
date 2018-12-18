@@ -1,0 +1,44 @@
+############此函数为最终预测调用函数
+fun_pred<-function(select_input){
+  #select_input<-select_input_org[i,]
+  select_input_transfor<-fun_select_transfor(select_input)
+  case<-fun_parameter_ym(select_input_transfor$select_partition_month,select_input_transfor$select_regDate)$case
+  model_code<-paste0(select_input_transfor$select_series,"T",paste0(format(as.Date(Sys.Date()),"%Y"),week(Sys.Date())),"CASE",case,sep="")%>%toupper()
+  #模型高效处理方法
+  input_test<-fun_input_test(select_input_transfor)
+  list_model<-list.files(paste0(price_model_loc,"\\model_net"), full.names = T,pattern = "RData")
+  list_model<-gsub(".*model_net\\/|.RData","",list_model)
+  if(length(grep(model_code,list_model))==0){
+    input_analysis<-fun_input(select_input_transfor)
+    if(nrow(input_analysis)<10){
+      print(paste0(select_input_transfor$select_model_name,"车辆信息太少"))
+      return(list(output_pre=NULL))
+    }else{
+      ########20180720修改#######
+      input_train<-fun_input_train(input_analysis,select_input_transfor)
+      model.svm<-fun_model_train(input_train,price_model_loc,model_code)
+      output_pre<-fun_model_test(select_input_transfor,input_test,model.svm)
+      #####20180713增加（输出辅助信息-训练样本量）(0905修改)######
+      sample_size<-input_train%>%dplyr::mutate(zb=ifelse(car_platform=="czb","pm_n",ifelse(car_platform=="csp","pm_n","fb_n")))%>%
+        group_by(zb)%>%dplyr::summarise(sample_size=n())%>%as.data.frame()%>%dcast(.~zb)%>%dplyr::select(-.)
+      if(length(grep("pm_n",names(sample_size)))==1){sample_size<-sample_size}else{
+        sample_size<-data.frame(sample_size,pm_n=as.integer(0))}
+      output_pre<-data.frame(output_pre,sample_size)
+      #####20180713增加
+      return(list(output_pre=output_pre))
+    }
+  } else
+  {
+    load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,".RData"))
+    load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,"input_train.RData"))
+    output_pre<-fun_model_test(select_input_transfor,input_test,model.svm)
+    #####20180713增加（输出辅助信息-训练样本量）(0905修改)######
+    sample_size<-input_train%>%dplyr::mutate(zb=ifelse(car_platform=="czb","pm_n",ifelse(car_platform=="csp","pm_n","fb_n")))%>%
+      group_by(zb)%>%dplyr::summarise(sample_size=n())%>%as.data.frame()%>%dcast(.~zb)%>%dplyr::select(-.)
+    if(length(grep("pm_n",names(sample_size)))==1){sample_size<-sample_size}else{
+      sample_size<-data.frame(sample_size,pm_n=as.integer(0))}
+    output_pre<-data.frame(output_pre,sample_size)
+    #####20180713增加
+    return(list(output_pre=output_pre))
+  }
+}
