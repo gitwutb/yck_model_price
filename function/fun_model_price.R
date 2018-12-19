@@ -72,11 +72,11 @@ fun_input_train<-function(input_analysis,select_input_transfor){
   
   ###训练数据选取--
   input_train<-input_analysis%>%dplyr::filter(user_years>user_years_plower&user_years<user_years_pupper&mile>mile_plower&mile<mile_pupper)%>%
-    dplyr::select(-quotes_p,-model_name,-regDate,-partition_month,-brand,-series,-parti_year,-reg_month,-date_add,-car_level) 
+    dplyr::select(-quotes_p,-regDate,-partition_month,-brand,-series,-parti_year,-reg_month,-car_level) 
   ##20180720##
   if(nrow(input_train)<100){
     input_train<-input_analysis%>%
-      dplyr::select(-quotes_p,-model_name,-regDate,-partition_month,-brand,-series,-parti_year,-reg_month,-date_add,-car_level)
+      dplyr::select(-quotes_p,-regDate,-partition_month,-brand,-series,-parti_year,-reg_month,-car_level)
   }else{
     print(paste0(select_series,"初始样本量为",nrow(input_train)))
   }
@@ -143,7 +143,7 @@ fun_input_test<-function(select_input_transfor){
 }
 ###############fun_model_input模型使用数据选取########
 fun_input<-function(select_input_transfor){
-  part_select<-c("SELECT car_platform,model_year,brand,series,model_name,auto,car_level,regDate,quotes,model_price,mile,province,user_years,a.partition_month,a.date_add FROM analysis_wide_table a WHERE ")
+  part_select<-c("SELECT car_platform,model_year,brand,series,auto,car_level,regDate,quotes,model_price,mile,province,user_years,a.partition_month FROM analysis_wide_table a WHERE ")
   part_condition<-c("series =")
   part_value<-paste0("'",as.character(select_input_transfor$select_series),"'")
   part_all<-paste0(part_select,part_condition,part_value)
@@ -286,17 +286,17 @@ fun_pred_round<-function(i){
       print(paste0(select_input_transfor$select_model_name,"车辆信息太少"))
       return(list(output_pre=NULL))
     }else{
-      ########20180720修改#######
+      ##20180720修改#
       input_train<-fun_input_train(input_analysis,select_input_transfor)
       model.svm<-fun_model_train(input_train,price_model_loc,model_code)
       output_pre<-fun_model_test(select_input_transfor,input_test,model.svm)
-      #####20180713增加（输出辅助信息-训练样本量）(0905修改)######
+      ##20180713增加（输出辅助信息-训练样本量）(0905修改)##
       sample_size<-input_train%>%dplyr::mutate(zb=ifelse(car_platform=="czb","pm_n",ifelse(car_platform=="csp","pm_n","fb_n")))%>%
         group_by(zb)%>%dplyr::summarise(sample_size=n())%>%as.data.frame()%>%dcast(.~zb)%>%dplyr::select(-.)
       if(length(grep("pm_n",names(sample_size)))==1){sample_size<-sample_size}else{
         sample_size<-data.frame(sample_size,pm_n=as.integer(0))}
       output_pre<-data.frame(output_pre,sample_size)
-      #####20180713增加
+      ####20180713增加
       return(list(output_pre=output_pre))
     }
   } else
@@ -304,20 +304,20 @@ fun_pred_round<-function(i){
     load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,".RData"))
     load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,"input_train.RData"))
     output_pre<-fun_model_test(select_input_transfor,input_test,model.svm)
-    #####20180713增加（输出辅助信息-训练样本量）(0905修改)######
+    ###20180713增加（输出辅助信息-训练样本量）(0905修改)##
     sample_size<-input_train%>%dplyr::mutate(zb=ifelse(car_platform=="czb","pm_n",ifelse(car_platform=="csp","pm_n","fb_n")))%>%
       group_by(zb)%>%dplyr::summarise(sample_size=n())%>%as.data.frame()%>%dcast(.~zb)%>%dplyr::select(-.)
     if(length(grep("pm_n",names(sample_size)))==1){sample_size<-sample_size}else{
       sample_size<-data.frame(sample_size,pm_n=as.integer(0))}
     output_pre<-data.frame(output_pre,sample_size)
-    #####20180713增加
+    ####20180713增加
     return(list(output_pre=output_pre))
   }
 }
 
 
 ##############********第二部分：模型相关输出**********################
-############本函数为查询输出相关信息##############
+###本函数为查询输出相关信息###
 main_fun_relation_output<-function(id_che300){
   #id_che300<-c(1150836,33014)
   #第一部分：获取最新款型折扣率信息
@@ -415,7 +415,7 @@ main_fun_series_standard<-function(car_id){
               "tec_auto_start_stop","tec_panoramic_camera","mm_central_console_color_screen","lt_hid","lt_auto_head_light",
               "lt_led_head_light")
   ###剔除的变量"st_seats_material"
-  ###########################第一部分：数据清洗############################
+  ###########################对标：第一部分：数据清洗############################
   test<-test[,col_name]
   test$liter_type<-test$ba_engine
   test$liter_type<-gsub("\\ .*|[0-9]\\.[0-9]","",test$liter_type)
@@ -460,7 +460,7 @@ main_fun_series_standard<-function(car_id){
     test[,col_order[i]]<-factor(test[,col_order[i]],ordered = T)
   }
   
-  ############################第二部分：数据选取#############################
+  ############################对标：第二部分：数据选取#############################
   car_match<-function(car_id){
     set.seed(10)
     car_select<-test[test$model_id==car_id,1:10]
@@ -477,7 +477,7 @@ main_fun_series_standard<-function(car_id){
     
     ##去掉部分字段
     aa_tr<-aa%>%dplyr::select(-model_id,-brand_name,-series_name,-model_name,-car_level,-auto)
-    ###########################第二部分：算法计算####################################
+    ###########################对标：第二部分：算法计算####################################
     #距离变换
     aa_distance<-daisy(aa_tr,metric = "gower",type = list(logratio = 3))
     tsne_obj <- tryCatch( Rtsne(aa_distance, is_distance = TRUE,perplexity=15),
@@ -497,7 +497,7 @@ main_fun_series_standard<-function(car_id){
     
     ##去掉部分字段
     aa_tr<-aa%>%dplyr::select(-model_id,-brand_name,-series_name,-model_name,-car_level,-auto)
-    ###########################第二部分：算法计算####################################
+    ###########################对标：第二部分：算法计算####################################
     #距离变换
     aa_distance<-daisy(aa_tr,metric = "gower",type = list(logratio = 3))
     ##tsne_obj <- Rtsne(aa_distance, is_distance = TRUE,perplexity=perp)
@@ -543,7 +543,7 @@ main_fun_series_standard<-function(car_id){
     pam_fit <- pam(aa_distance,diss = TRUE,k = number_clu+1)
     sc2<-data.frame(cc=pam_fit$clustering,aa)
     
-    #########################第三部分：结果分析#############
+    #########################对标：第三部分：结果分析#############
     output_result<-sc%>%dplyr::filter(cc==sc$cc[which(sc$model_id==car_id)])%>%.[1:6]
     output_result2<-sc2%>%dplyr::filter(cc==sc2$cc[which(sc2$model_id==car_id)])%>%.[1:6]
     output<-rbind(output_result,output_result2)%>%dplyr::select(-cc)%>%unique()
@@ -560,7 +560,7 @@ main_fun_series_standard<-function(car_id){
            error=function(e){cat(write.csv(output_error,paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),row.names = F),conditionMessage(e),"\n\n")},
            finally={print("结果输出f")})
 }
-#######综合输出##############
+#综合输出###
 main_fun_main_union<-function(select_input){
   car_id<-select_input$select_model_id
   ################第一部分：对标车型###############
@@ -585,7 +585,7 @@ main_fun_main_union<-function(select_input){
   
   
   ################第二部分：对应价格预测###############
-  ######1.价格预测（当样本量可信度较低时调用对标车）######
+  ###1.价格预测（当样本量可信度较低时调用对标车）##
   linshi<-fun_pred(select_input)
   output_pre<-linshi[[1]]
   result_tag<-dplyr::summarise(group_by(output_pre,select_model_id,select_model_name,select_model_price,select_regDate,
@@ -593,7 +593,7 @@ main_fun_main_union<-function(select_input){
     ungroup()%>%as.data.frame()%>%dplyr::mutate(fb_monitor=round(fb_price/select_model_price,3),pm_monitor=round(pm_price/select_model_price,3))
   
   ########################################
-  ########2.市场范围数据规范性校验#######
+  ###2.市场范围数据规范性校验##
   sql_config<-paste0("SELECT platform_class car_platform_class,parmeter_y,parmeter_m,parmeter_v FROM config_quotes_class
                      WHERE car_level= (SELECT car_level FROM config_che300_major_info WHERE model_id =",car_id,")
                      AND auto= (SELECT auto FROM config_che300_major_info WHERE model_id =",car_id,")",sep='')
@@ -617,7 +617,7 @@ main_fun_main_union<-function(select_input){
   
   
   ################第三部分：对标车型价格预测###############
-  ########3.当样本量过少启动(对标车型误差)############
+  ###3.当样本量过少启动(对标车型误差)###
   if(nrow(car_match)>0){
     select_input_db<-data.frame(select_model_id=car_match$model_id,select_input[,-1])
     start_time<-Sys.time()
@@ -666,15 +666,15 @@ main_fun_price_model<-function(select_input){
   ##########数据输入
   ###########加载自定义函数###########paste0(price_model_loc,"\\function")
   
-  ############################模型链条完善##############################
+  ###模型链条完善###
   #select_input<-select_input[1:1,]
   linshi<-fun_pred(select_input)
   return(linshi)
 }
-###########综合输出（产品）######
+##综合输出（产品）##
 model_main<-function(select_input){
   car_id<-select_input$select_model_id
-  ################第一部分：对标车型###############
+  ################model_main:第一部分：对标车型###############
   ####对标车型输出（提升效率：查询是否有过对标车型）（注意：为保证对标车型时效性，定期清理对标结果output的csv文件）
   list_matchfile<-list.files(paste0(price_model_loc,"\\output\\relation"), full.names = T,pattern = ".csv")
   list_matchfile<-gsub(".*output\\\\relation\\/|.csv","",list_matchfile)
@@ -685,7 +685,7 @@ model_main<-function(select_input){
   }
   car_match<- read.csv(paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),header = T,sep = ",")%>%
     dplyr::filter(model_id!=car_id)
-  ###############去掉量少的车id
+  ####去掉量少的车id
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   series_max<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT series_name,sum(count_s) cou FROM analysis_wide_table_cous
@@ -695,15 +695,14 @@ model_main<-function(select_input){
   car_match<-car_match%>%dplyr::filter(series_name %in% series_max$series)
   
   
-  ################第二部分：对应价格预测###############
-  ######1.价格预测（当样本量可信度较低时调用对标车）######
+  ################model_main:第二部分：对应价格预测###############
+  ##1.价格预测（当样本量可信度较低时调用对标车）#
   linshi<-fun_pred(select_input)
   output_pre<-linshi[[1]]%>%dplyr::mutate(query_lab="T")
   result_tag<-dplyr::summarise(group_by(output_pre,user_query_id,select_model_id,select_model_name,select_model_price,select_regDate,
                                         select_partition_month,select_mile),fb_price=mean(fb),pm_price=mean(pm))%>%
     ungroup()%>%as.data.frame()%>%dplyr::mutate(fb_monitor=round(fb_price/select_model_price,3),pm_monitor=round(pm_price/select_model_price,3))
-  ########################################
-  ########2.市场范围数据规范性校验#######
+  ######2.市场范围数据规范性校验##
   sql_config<-paste0("SELECT platform_class car_platform_class,parmeter_y,parmeter_m,parmeter_v FROM config_quotes_class
                      WHERE car_level= (SELECT car_level FROM config_che300_major_info WHERE model_id =",car_id,")
                      AND auto= (SELECT auto FROM config_che300_major_info WHERE model_id =",car_id,")",sep='')
@@ -726,8 +725,8 @@ model_main<-function(select_input){
   result_tag<-data.frame(result_tag,config_reg)
   
   
-  ################第三部分：对标车型价格预测###############
-  ########3.当样本量过少启动(对标车型误差)############
+  ################model_main:第三部分：对标车型价格预测###############
+  #3.当样本量过少启动(对标车型误差)#
   #acount_sample<-sum(output_sample$sample_size[which(output_sample$car_platform %in% c("czb","csp"))])
   if(nrow(car_match)>0){
     select_input_db<-data.frame(user_query_id=select_input$user_query_id,select_model_id=car_match$model_id,select_input[,-c(1:2)])
@@ -760,7 +759,7 @@ model_main<-function(select_input){
   result_bd$pm_index<-cut(abs(result_bd$pm_monitor-result_bd$pm_index),c(-0.001,0.06,0.1,0.15,1),labels=c('高','基本','不可信','错误'))
   result_bd<-result_bd%>%dplyr::mutate(recep_price=pm_price*0.94-0.25)
   
-  #######********输出未来五个月预测值********#######
+  #********输出未来五个月预测值********##
   select_input_future<-NULL
   for (i in 1:6) {
     linshi_input<-select_input
@@ -779,8 +778,7 @@ model_main<-function(select_input){
   result_future<-dplyr::summarise(group_by(match_output_future,user_query_id,select_partition_month),fb_price=round(mean(fb),2))%>%
     ungroup()%>%as.data.frame()%>%dcast(user_query_id~select_partition_month)
   names(result_future)<-c("user_query_id","now_price","future1","future2","future3","future4","future5")
-  #######********输出未来五个月预测值********#######
-  
+  #********输出未来五个月预测值********#
   #存入数据库
   write.csv(result_bd,paste0(price_model_loc,"/output/result/yck_project_model_result_tag",".csv"),
             row.names = F,fileEncoding = "UTF-8",quote = F)
@@ -804,16 +802,16 @@ model_main<-function(select_input){
 
 
 ##############********第三部分：模型离线训练函数**********################
-###############fun_model_input模型使用数据选取########
+#fun_model_input模型使用数据选取#
 outline_all_fun_input<-function(){
-  part_select<-c("SELECT car_platform,model_year,brand,series,model_name,auto,car_level,regDate,quotes,model_price,mile,province,user_years,a.partition_month,a.date_add FROM analysis_wide_table a")
+  part_select<-c("SELECT car_platform,model_year,brand,series,auto,car_level,regDate,quotes,model_price,mile,province,user_years,a.partition_month FROM analysis_wide_table a")
   ######数据库查询
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   input_orig<-dbFetch(dbSendQuery(loc_channel,part_select),-1)
   dbDisconnect(loc_channel)
   
-  ##############数据处理##############
+  #数据处理#
   input_orig<-data.frame(input_orig,quotes_p=round(input_orig$quotes/input_orig$model_price,2))
   input_orig<-input_orig%>%dplyr::filter(quotes_p>0.05&quotes_p<0.95)
   input_orig<-input_orig%>%dplyr::filter(user_years<1|quotes_p<1)
@@ -824,7 +822,7 @@ outline_all_fun_input<-function(){
                          parti_month=str_sub(input_orig$partition_month,5,6))
   return(input_orig)
 }
-###############fun_model_input模型使用数据选取########
+##fun_model_input模型使用数据选取##
 outline_series_fun_input<-function(select_input_transfor){
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
@@ -849,11 +847,11 @@ outline_series_fun_pred<-function(i){
       print(paste0(select_input_transfor$select_model_name,"车辆信息太少"))
       return(list(output_pre=NULL))
     }else{
-      ########20180720修改#######
+      #20180720修改#
       input_train<-fun_input_train(input_analysis,select_input_transfor)
       model.svm<-fun_model_train(input_train,price_model_loc,model_code)
       output_pre<-fun_model_test(select_input_transfor,input_test,model.svm)
-      #####20180713增加（输出辅助信息-训练样本量）(0905修改)######
+      #20180713增加（输出辅助信息-训练样本量）(0905修改)#
       sample_size<-input_train%>%dplyr::mutate(zb=ifelse(car_platform=="czb","pm_n",ifelse(car_platform=="csp","pm_n","fb_n")))%>%
         group_by(zb)%>%dplyr::summarise(sample_size=n())%>%as.data.frame()%>%dcast(.~zb)%>%dplyr::select(-.)
       if(length(grep("pm_n",names(sample_size)))==1){sample_size<-sample_size}else{
@@ -867,13 +865,13 @@ outline_series_fun_pred<-function(i){
     load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,".RData"))
     load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,"input_train.RData"))
     output_pre<-fun_model_test(select_input_transfor,input_test,model.svm)
-    #####20180713增加（输出辅助信息-训练样本量）(0905修改)######
+    #20180713增加（输出辅助信息-训练样本量）(0905修改)
     sample_size<-input_train%>%dplyr::mutate(zb=ifelse(car_platform=="czb","pm_n",ifelse(car_platform=="csp","pm_n","fb_n")))%>%
       group_by(zb)%>%dplyr::summarise(sample_size=n())%>%as.data.frame()%>%dcast(.~zb)%>%dplyr::select(-.)
     if(length(grep("pm_n",names(sample_size)))==1){sample_size<-sample_size}else{
       sample_size<-data.frame(sample_size,pm_n=as.integer(0))}
     output_pre<-data.frame(output_pre,sample_size)
-    #####20180713增加
+    ###20180713增加
     return(list(output_pre=output_pre))
   }
 }
