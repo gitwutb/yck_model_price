@@ -151,6 +151,15 @@ fun_input<-function(select_input_transfor){
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   input_orig<-dbFetch(dbSendQuery(loc_channel,part_all),-1)
+  #2018/12/20添加(对于样本少数据使用同品牌同级别车代替；若仍不够使用品牌代替)
+  if(nrow(input_orig)<500){
+    series_list<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT DISTINCT car_series1 select_series FROM analysis_che300_cofig_info a
+                                                        INNER JOIN config_che300_major_info b ON a.car_id=b.model_id
+                                                        WHERE a.car_name='",as.character(select_input_transfor$select_brand),
+                                                        "' AND b.car_level='",as.character(select_input_transfor$select_car_level),"'")),-1)
+    input_orig<-dbFetch(dbSendQuery(loc_channel,paste0(part_select,"series IN('",paste0(as.character(series_list$select_series),collapse = "','"),"')")),-1)
+  }
+  #2018/12/20-end
   dbDisconnect(loc_channel)
   #input_analysis<-input_orig%>%dplyr::filter(car_platform!='czb',car_platform!='souche')
   input_analysis<-input_orig
@@ -798,13 +807,15 @@ model_main<-function(select_input){
   dbSendQuery(loc_channel,paste0("UPDATE yck_project_model_query SET query_statue=2 WHERE user_query_id=",unique(result_compare$user_query_id),";"))
   dbDisconnect(loc_channel)
   return(1)
-  }
+}
 
 
 ##############********第三部分：模型离线训练函数**********################
 #fun_model_input模型使用数据选取#
 outline_all_fun_input<-function(){
   part_select<-c("SELECT car_platform,model_year,brand,series,auto,car_level,regDate,quotes,model_price,mile,province,user_years,a.partition_month FROM analysis_wide_table a")
+  #测试离线代码
+  #part_select<-c("SELECT car_platform,model_year,brand,series,auto,car_level,regDate,quotes,model_price,mile,province,user_years,a.partition_month FROM analysis_wide_table a where series='凯越'")
   ######数据库查询
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
@@ -824,11 +835,18 @@ outline_all_fun_input<-function(){
 }
 ##fun_model_input模型使用数据选取##
 outline_series_fun_input<-function(select_input_transfor){
-  loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
-  dbSendQuery(loc_channel,'SET NAMES gbk')
-  part_value<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT car_series1 FROM analysis_che300_cofig_info WHERE car_id = ",select_input_transfor$select_model_id)),-1)%>%as.character()
-  dbDisconnect(loc_channel)
+  part_value<-as.character(select_input_transfor$select_series)
   input_analysis<-input_orig%>%dplyr::filter(series==part_value)
+  if(nrow(input_analysis)<500){
+    loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
+    dbSendQuery(loc_channel,'SET NAMES gbk')
+    series_list<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT DISTINCT car_series1 select_series FROM analysis_che300_cofig_info a
+                                                        INNER JOIN config_che300_major_info b ON a.car_id=b.model_id
+                                                        WHERE a.car_name='",as.character(select_input_transfor$select_brand),
+                                                        "' AND b.car_level='",as.character(select_input_transfor$select_car_level),"'")),-1)
+    dbDisconnect(loc_channel)
+    input_analysis<-input_orig%>%dplyr::filter(series %in% series_list$select_series)
+  }
   return(input_analysis)
 }
 ############此函数为最终预测调用函数(离线训练)

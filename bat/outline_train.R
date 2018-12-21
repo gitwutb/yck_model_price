@@ -1,1 +1,1 @@
-source("C:/Users/Administrator/Desktop/YCK_DC_SHARE/code_model_ml/model_rea_4_3/main/outline_main.R",echo=TRUE,encoding="utf-8")
+source(paste0(gsub("\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()})),'/main/outline_main.R',sep=""),echo=TRUE,encoding="utf-8")

@@ -13,7 +13,7 @@ library(cluster)
 library(Rtsne)
 library(tidyr)
 library(xlsx)
-price_model_loc<-gsub("\\/main","",dirname(rstudioapi::getActiveDocumentContext()$path))
+price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
 local_defin<-data.frame(user = 'root',host='192.168.0.111',password= '000000',dbname='yck-data-center',stringsAsFactors = F)
 source(paste0(price_model_loc,"\\function\\fun_model_price.R"),echo=FALSE,encoding="utf-8")
 #############################数据输入：########################################

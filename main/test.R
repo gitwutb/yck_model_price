@@ -1,7 +1,7 @@
 #####model test
 rm(list = ls(all=T))
 gc()
-price_model_loc<-gsub("\\/main","",dirname(rstudioapi::getActiveDocumentContext()$path))
+price_model_loc<-gsub("\\/main","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
 source(paste0(price_model_loc,"\\main\\model_interface.R"),echo=FALSE,encoding="utf-8")
 loc_channel<-dbConnect(MySQL(),user = "yckdc",host="47.106.189.86",password= "YckDC888",dbname="yck-data-center")
 dbSendQuery(loc_channel,'SET NAMES gbk')

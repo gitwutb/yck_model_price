@@ -11,7 +11,7 @@ library(tcltk)
 library(lubridate)
 ##########数据输入
 ###########加载自定义函数###########paste0(price_model_loc,"\\function")
-price_model_loc<-gsub("\\/main","",dirname(rstudioapi::getActiveDocumentContext()$path))
+price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
 local_defin<-data.frame(user = 'root',host='192.168.0.111',password= '000000',dbname='yck-data-center',stringsAsFactors = F)
 source(paste0(price_model_loc,"\\function\\fun_model_price.R"),echo=FALSE,encoding="utf-8")
 ############################模型链条完善##############################
@@ -23,7 +23,7 @@ select_input<-read.csv(paste0(price_model_loc,"\\file\\","select_inputst.csv"),h
 # select_input<-read.csv(paste0(price_model_loc,"\\file\\","select_inputst6.csv"),header = T)
 # select_input<-data.frame(select_input[rep(1:16,each=15),1:3],select_partition_month=aa[,4])
 # select_input$select_mile<-3*as.numeric(round(difftime(as_datetime(select_input$select_partition_month),as_datetime(select_input$select_regDate),units="days")/365,2))
-# #########
+#
 
 start_time<-Sys.time()
 pb <- tkProgressBar("进度","已完成 %", 0, 100) #开启进度条 

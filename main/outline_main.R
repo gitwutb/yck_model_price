@@ -11,8 +11,8 @@ library(tcltk)
 library(lubridate)
 library(parallel)
 library(rlist)
-#price_model_loc<-gsub("\\/main","",dirname(rstudioapi::getActiveDocumentContext()$path))
-price_model_loc<-c("E:/Work_table/gitwutb/git_project/model_price")
+price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
+print(price_model_loc)
 local_defin<-data.frame(user = 'root',host='192.168.0.111',password= '000000',dbname='yck-data-center',stringsAsFactors = F)
 source(paste0(price_model_loc,"\\function\\fun_model_price.R"),echo=FALSE,encoding="utf-8")
 ##########数据输入
@@ -26,6 +26,8 @@ select_input1<-dbFetch(dbSendQuery(loc_channel,"SELECT series_name series,MIN(ca
                                    GROUP BY series_name;"),-1)
 dbDisconnect(loc_channel)
 ###剔除非训练样本#######
+#测试离线代码
+#select_input1<-data.frame(series='凯越',select_model_id='813')
 input_orig<-input_orig%>%filter(series %in% select_input1$series)
 select_input1<-data.frame(select_model_id=select_input1$select_model_id,select_regDate='2017/6/1',select_mile='4',select_partition_month='2018/6/1')
 #############################测试数据1：########################################
