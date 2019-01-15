@@ -71,10 +71,11 @@ fun_input_train<-function(input_analysis,select_input_transfor){
   case=parameter_ym_value$case
   
   ###训练数据选取--
+  input_analysis$quotes<-input_analysis$quotes_p
   input_train<-input_analysis%>%dplyr::filter(user_years>user_years_plower&user_years<user_years_pupper&mile>mile_plower&mile<mile_pupper)%>%
     dplyr::select(-quotes_p,-regDate,-partition_month,-brand,-series,-parti_year,-reg_month,-car_level) 
   ##20180720##
-  if(nrow(input_train)<100){
+  if(nrow(input_train)<500){
     input_train<-input_analysis%>%
       dplyr::select(-quotes_p,-regDate,-partition_month,-brand,-series,-parti_year,-reg_month,-car_level)
   }else{
@@ -86,7 +87,7 @@ fun_input_train<-function(input_analysis,select_input_transfor){
   input_train_linshi<-NULL
   for (i in unique(input_train$car_platform)) {
     input_train_one<-input_train%>%dplyr::filter(car_platform==i)
-    aa1<-lm((input_train_one$quotes/input_train_one$model_price)~input_train_one$mile+input_train_one$user_years)
+    aa1<-lm(input_train_one$quotes~input_train_one$mile+input_train_one$user_years)
     input_train_one<-input_train_one%>%dplyr::mutate(residuals=aa1$residuals,fit=aa1$fitted.values)%>%dplyr::filter(abs(residuals)<parameter_residuals)
     #----20180711增加（当训练样本过多则选取精度最高的样本）
     parameter_res=parameter_residuals
@@ -211,7 +212,7 @@ fun_factor_standar<-function(input_value){
 ##############本函数为训练模型：输入ana1，输出模型结构
 fun_model_train<-function(input_train,price_model_loc,model_code){
   ##模型训练
-  model.svm <- e1071::svm(quotes~., input_train) 
+  model.svm <- e1071::svm(quotes~., input_train,gamma=0.08) 
   preds <- predict(model.svm, input_train)
   save(model.svm,file=paste0(price_model_loc,"\\model_net\\",model_code,".RData"))
   save(input_train,file=paste0(price_model_loc,"\\model_net\\",model_code,"input_train.RData"))
