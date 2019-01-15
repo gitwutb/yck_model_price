@@ -5,7 +5,7 @@ price_model_loc<-gsub("\\/main","",tryCatch(dirname(rstudioapi::getActiveDocumen
 source(paste0(price_model_loc,"\\main\\model_interface.R"),echo=FALSE,encoding="utf-8")
 loc_channel<-dbConnect(MySQL(),user = "yckdc",host="47.106.189.86",password= "YckDC888",dbname="yck-data-center")
 dbSendQuery(loc_channel,'SET NAMES gbk')
-input_tra<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id=",50)),-1)%>%
+input_tra<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id=",43)),-1)%>%
   dplyr::select(-user_query_id,-query_statue)
 dbDisconnect(loc_channel)
 return_datatest<-model_interface_datatest(input_tra)

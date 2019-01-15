@@ -414,7 +414,7 @@ main_fun_series_standard<-function(car_id){
   dbSendQuery(loc_channel,'SET NAMES gbk')
   test<-dbFetch(dbSendQuery(loc_channel,"SELECT * FROM config_che300_major_info a 
                             INNER JOIN config_che300_detail_info b ON a.model_id=b.model_id
-                            INNER JOIN config_series_class c ON a.brand_name=c.brand;"),-1)
+                            INNER JOIN config_series_bcountry c ON a.brand_name=c.brand;"),-1)
   dbDisconnect(loc_channel)
   col_name<-c("model_id","brand_name","series_name","model_name","model_price","model_year","car_level","auto","liter","liter_type","discharge_standard",
               "ba_lwh","ba_engine","ba_gearbox","ba_structure","ee_max_mileage",

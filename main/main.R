@@ -13,11 +13,11 @@ library(lubridate)
 ###########加载自定义函数###########paste0(price_model_loc,"\\function")
 price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
 local_defin<-data.frame(user = 'root',host='192.168.0.111',password= '000000',dbname='yck-data-center',stringsAsFactors = F)
-source(paste0(price_model_loc,"\\function\\fun_model_price.R"),echo=FALSE,encoding="utf-8")
+source(paste0(price_model_loc,"\\function\\fun_model_price_test.R"),echo=FALSE,encoding="utf-8")
 ############################模型链条完善##############################
 #############################测试数据1：########################################
 select_input<-read.csv(paste0(price_model_loc,"\\file\\","select_inputst.csv"),header = T)
-#select_input<-select_input[1:1,]
+#select_input<-select_input[3:3,]
 # #########临时调用
 # aa<-read.csv(paste0(price_model_loc,"\\file\\","select_inputst7.csv"),header = T)
 # select_input<-read.csv(paste0(price_model_loc,"\\file\\","select_inputst6.csv"),header = T)
