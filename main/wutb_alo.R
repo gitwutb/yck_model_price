@@ -1,3 +1,4 @@
+##用于对不同算法测试
 rm(list = ls(all=T))
 gc()
 library(reshape2)
@@ -17,8 +18,12 @@ local_defin<-data.frame(user = 'root',host='192.168.0.111',password= '000000',db
 source(paste0(price_model_loc,"\\function\\fun_model_price_test.R"),echo=FALSE,encoding="utf-8")
 ############################模型链条完善##############################
 #############################测试数据1：########################################
-select_input<-read.csv(paste0(price_model_loc,"\\file\\","select_inputst.csv"),header = T)
-select_input<-select_input[6:6,]
+#select_input<-read.csv(paste0(price_model_loc,"\\file\\","select_inputst.csv"),header = T)
+loc_channel<-dbConnect(MySQL(),user = "yckdc",host="47.106.189.86",password= "YckDC888",dbname="yck-data-center")
+dbSendQuery(loc_channel,'SET NAMES gbk')
+select_input<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id in (",paste0(184:184,collapse = ','),')')),-1)%>%
+  dplyr::select(select_model_id,select_regDate,select_mile,select_partition_month)
+dbDisconnect(loc_channel)
 
 select_input_transfor<-fun_select_transfor(select_input)
 case<-fun_parameter_ym(select_input_transfor$select_partition_month,select_input_transfor$select_regDate)$case
@@ -27,7 +32,7 @@ input_test<-fun_input_test(select_input_transfor)
 #获取训练数据
 input_analysis<-fun_input(select_input_transfor)
 nrow(input_analysis)
-input_train<-fun_input_train1(input_analysis,select_input_transfor)
+input_train<-fun_input_train(input_analysis,select_input_transfor)
 input_train<-input_train[sample(1:nrow(input_train)),]
 nrow(input_train)
 
@@ -50,13 +55,13 @@ cl<-makeCluster(4)
 clusterExport(cl,c("model_algorithm1","input_train"))
 clusterEvalQ(cl,c(library(reshape2),library(dplyr),library(RMySQL),library(stringr),
                   library(e1071) ,library(tcltk),library(lubridate)))
-error_return1<-tryCatch(
+error_return<-tryCatch(
   {parLapply(cl,x,model_algorithm1)}, 
   warning = function(w) {"出警告啦"}, 
   error = function(e) { "出错啦"})
-error_return1<-list.rbind(error_return1)
+error_return<-list.rbind(error_return)
 stopCluster(cl)
-ggplot(data=error_return1, mapping=aes(x=parameter_gamma, y=x1))+geom_line(aes(color='y'),size=1.5)+geom_point(aes(color='y'),size=3)+
+ggplot(data=error_return, mapping=aes(x=parameter_gamma, y=x1))+geom_line(aes(color='y'),size=1.5)+geom_point(aes(color='y'),size=3)+
   geom_line(aes(y=x2,color='red'),size=1.5)+geom_point(aes(y=x2,color='red'),size=3,alpha=1)
 
 

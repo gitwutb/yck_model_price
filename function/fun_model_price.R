@@ -223,6 +223,7 @@ fun_model_test<-function(select_input_transfor,input_test,model.svm){
   ##模型预测
   pre_preds <- predict(model.svm, input_test) 
   test_output<-data.frame(input_test,pre_preds)
+  test_output$pre_preds<-round(test_output$model_price*test_output$pre_preds,3) #将折扣率转换为残值
   #配置平台权重表
   config_platform<-data.frame(car_platform=c("guazi","rrc","yiche","che168","youxin","che58","souche","czb","csp"),
                               car_platform_class=c("fb","fb","fb","fb","fb","fb","fb","pm","pm"),
@@ -238,7 +239,7 @@ fun_model_test<-function(select_input_transfor,input_test,model.svm){
 }
 ############此函数为最终预测调用函数
 fun_pred<-function(select_input){
-  #select_input<-select_input_org[i,]
+  select_input<-data.frame(select_model_id=select_input[1],select_regDate=select_input[2],select_mile=select_input[3],select_partition_month=select_input[4])
   select_input_transfor<-fun_select_transfor(select_input)
   case<-fun_parameter_ym(select_input_transfor$select_partition_month,select_input_transfor$select_regDate)$case
   model_code<-paste0(select_input_transfor$select_series,"T",paste0(format(as.Date(Sys.Date()),"%Y"),week(Sys.Date())),"CASE",case,sep="")%>%toupper()
@@ -602,7 +603,6 @@ main_fun_main_union<-function(select_input){
                                         select_partition_month,select_mile),fb_price=mean(fb),pm_price=mean(pm))%>%
     ungroup()%>%as.data.frame()%>%dplyr::mutate(fb_monitor=round(fb_price/select_model_price,3),pm_monitor=round(pm_price/select_model_price,3))
   
-  ########################################
   ###2.市场范围数据规范性校验##
   sql_config<-paste0("SELECT platform_class car_platform_class,parmeter_y,parmeter_m,parmeter_v FROM config_quotes_class
                      WHERE car_level= (SELECT car_level FROM config_che300_major_info WHERE model_id =",car_id,")
