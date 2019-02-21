@@ -18,7 +18,7 @@ source(paste0(price_model_loc,"\\function\\fun_model_price_test.R"),echo=FALSE,e
 #select_input<-read.csv(paste0(price_model_loc,"\\file\\","select_inputst.csv"),header = T)
 loc_channel<-dbConnect(MySQL(),user = "yckdc",host="47.106.189.86",password= "YckDC888",dbname="yck-data-center")
 dbSendQuery(loc_channel,'SET NAMES gbk')
-select_input<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id in (",paste0(184:184,collapse = ','),')')),-1)%>%
+select_input<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id in (",paste0(216:216,collapse = ','),')')),-1)%>%
   dplyr::select(select_model_id,select_regDate,select_mile,select_partition_month)
 dbDisconnect(loc_channel)
 ###-----------第一部分：单一输出--------####
@@ -42,7 +42,7 @@ price_model_loc<-gsub("\\/main","",tryCatch(dirname(rstudioapi::getActiveDocumen
 source(paste0(price_model_loc,"\\main\\model_interface.R"),echo=FALSE,encoding="utf-8")
 loc_channel<-dbConnect(MySQL(),user = "yckdc",host="47.106.189.86",password= "YckDC888",dbname="yck-data-center")
 dbSendQuery(loc_channel,'SET NAMES gbk')
-input_tra<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id=",43)),-1)%>%
+input_tra<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id=",223)),-1)%>%
   dplyr::select(-user_query_id,-query_statue)
 dbDisconnect(loc_channel)
 return_datatest<-model_interface_datatest(input_tra)

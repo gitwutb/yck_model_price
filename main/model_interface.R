@@ -15,7 +15,7 @@ library(tidyr)
 price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
 #local_defin<-data.frame(user = "yckdc",host="172.18.215.178",password= "YckDC888",dbname="yck-data-center",stringsAsFactors = F)
 local_defin<-data.frame(user = 'root',host='192.168.0.111',password= '000000',dbname='yck-data-center',stringsAsFactors = F)
-source(paste0(price_model_loc,"\\function\\fun_model_price.R"),echo=FALSE,encoding="utf-8")
+source(paste0(price_model_loc,"\\function\\fun_model_price_test.R"),echo=FALSE,encoding="utf-8")
 ###接口调用函数
 model_interface_datatest<-function(input_tra){
   ############################数据输入：########################################

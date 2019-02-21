@@ -21,20 +21,20 @@ fun_parameter_ym<-function(partition_month,regDate){
     case="1"
     user_years_plower=0
     user_years_pupper=1
-    mile_plower=0
+    mile_plower=0.01
     mile_pupper=4
   }else if (select_user_year<1.5){
     case="2"
     user_years_plower=0
     user_years_pupper=3
     mile_plower=0.01
-    mile_pupper=7
+    mile_pupper=12
   }else if (select_user_year<3){
     case="3"
     user_years_plower=0.6
     user_years_pupper=4
-    mile_plower=0
-    mile_pupper=13
+    mile_plower=0.01
+    mile_pupper=15
   }else if (select_user_year<5){
     case="4"
     user_years_plower=2
@@ -212,7 +212,7 @@ fun_factor_standar<-function(input_value){
 ##############本函数为训练模型：输入ana1，输出模型结构
 fun_model_train<-function(input_train,price_model_loc,model_code){
   ##模型训练
-  model.svm <- e1071::svm(quotes~., input_train,gamma=0.08) 
+  model.svm <- e1071::svm(quotes~., input_train,gamma=0.02) 
   preds <- predict(model.svm, input_train)
   save(model.svm,file=paste0(price_model_loc,"\\model_net\\",model_code,".RData"))
   save(input_train,file=paste0(price_model_loc,"\\model_net\\",model_code,"input_train.RData"))
@@ -239,7 +239,6 @@ fun_model_test<-function(select_input_transfor,input_test,model.svm){
 }
 ############此函数为最终预测调用函数
 fun_pred<-function(select_input){
-  select_input<-data.frame(select_model_id=select_input[1],select_regDate=select_input[2],select_mile=select_input[3],select_partition_month=select_input[4])
   select_input_transfor<-fun_select_transfor(select_input)
   case<-fun_parameter_ym(select_input_transfor$select_partition_month,select_input_transfor$select_regDate)$case
   model_code<-paste0(select_input_transfor$select_series,"T",paste0(format(as.Date(Sys.Date()),"%Y"),week(Sys.Date())),"CASE",case,sep="")%>%toupper()

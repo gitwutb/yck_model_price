@@ -12,8 +12,9 @@ library(lubridate)
 library(parallel)
 library(rlist)
 price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
-print(price_model_loc)
 local_defin<-data.frame(user = 'root',host='192.168.0.111',password= '000000',dbname='yck-data-center',stringsAsFactors = F)
+lf<-list.files(paste0(price_model_loc,"/model_net",sep=""), full.names = T,pattern = ".RData")
+file.remove(lf[grep(paste0(format(as.Date(Sys.Date()-7),"%Y"),week(Sys.Date()-7),"CASE"),lf)])
 source(paste0(price_model_loc,"\\function\\fun_model_price.R"),echo=FALSE,encoding="utf-8")
 ##########数据输入
 input_orig<-outline_all_fun_input()
@@ -34,10 +35,10 @@ select_input1<-data.frame(select_model_id=select_input1$select_model_id,select_r
 #select_input1<-read.csv(paste0(price_model_loc,"\\file\\","outline_train.csv"),header = T)
 select_input_org<-NULL
 # #########临时调用
-for (i in 1:5) {
+for (i in 1:10) {
   linshi_input<-select_input1
   linshi_input$select_regDate<-as.character(today())
-  linshi_input$select_partition_month<-as.character(today()+320*i)
+  linshi_input$select_partition_month<-as.character(today()+200*i)
   select_input_org<-rbind(select_input_org,linshi_input)
 }
 rm(select_input1,linshi_input)
