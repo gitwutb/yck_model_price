@@ -41,7 +41,7 @@ interface_out2_detail_th<-function(parameter_user_query_id,parameter_classificat
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   select_query<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_id FROM yck_project_model_query WHERE user_query_id=",parameter_user_query_id)),-1)
-  interface_out2_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT hl_configs,hl_configc FROM config_che300_major_info WHERE model_id=",select_query$select_model_id)),-1)
+  interface_out2_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT hl_configs,hl_configc FROM config_vdatabase_yck_major_info WHERE model_id=",select_query$select_model_id)),-1)
   dbDisconnect(loc_channel)
   interface_out2_return<-toJSON(unname(alply(interface_out2_return, 1, identity)))
   return(interface_out2_return)
@@ -172,7 +172,7 @@ interface_out7_detail_mth<-function(parameter_user_query_id,parameter_classifica
                                                                  oeq_electric_trunk,sf_keyless_go,ieq_multi_function_steering_wheel,st_seats_material,
                                                                  st_driver_seat_electric_adjust,st_front_passenger_seat_electric_adjust,mm_central_console_color_screen,
                                                                  mm_bluetooth_carphone,lt_led_head_light,ac_type FROM config_che300_detail_info a
-                                                                 INNER JOIN config_che300_major_info b ON a.model_id=b.model_id WHERE b.model_id in (",paste0(select_query$select_model_id,collapse = ","),")")),-1)
+                                                                 INNER JOIN config_vdatabase_yck_major_info b ON a.model_id=b.model_id WHERE b.model_id in (",paste0(select_query$select_model_id,collapse = ","),")")),-1)
   interface_out71_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_id model_id,select_model_name model_name,query_lab,
                                                                  CONCAT(ROUND(DATEDIFF(select_partition_month,select_regDate)/365,2),'年(',select_mile,'万)') age_mile,CONCAT(select_model_price,'万') select_model_price,CONCAT(recep_price,' || ',pm_price,' || ',fb_price) price
                                                                  FROM yck_project_model_result_match WHERE user_query_id=",parameter_user_query_id)),-1)
@@ -220,9 +220,9 @@ interface_out9_sales_new<-function(parameter_user_query_id,parameter_classificat
   interface_out9_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT c300.model_id,c300.series_name,stat_date,salesNum FROM config_plat_id_match a
                                                                 INNER JOIN config_souhu_major_info b ON a.id_souhu=b.model_id
                                                                 INNER JOIN spider_salesnum_souhu c ON b.series_id=c.series_id
-                                                                INNER JOIN config_che300_major_info c300 ON a.id_che300=c300.model_id
+                                                                INNER JOIN config_vdatabase_yck_major_info c300 ON a.id_che300=c300.model_id
                                                                 WHERE id_che300 in (",paste0(select_query$select_model_id,collapse = ","),
-                                                                ") UNION SELECT model_id,a.series_name,stat_date,salesNum FROM config_che300_major_info a
+                                                                ") UNION SELECT model_id,a.series_name,stat_date,salesNum FROM config_vdatabase_yck_major_info a
                                                                 LEFT JOIN config_series_id_match b ON a.series_id=b.series_id_300
                                                                 LEFT JOIN spider_salesnum_souhu c ON c.series_id=b.series_id_sohu
                                                                 WHERE model_id in (",paste0(select_query$select_model_id,collapse = ","),")")),-1)%>%

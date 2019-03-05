@@ -15,7 +15,7 @@ price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActive
 local_defin<-data.frame(user = 'root',host='192.168.0.111',password= '000000',dbname='yck-data-center',stringsAsFactors = F)
 lf<-list.files(paste0(price_model_loc,"/model_net",sep=""), full.names = T,pattern = ".RData")
 file.remove(lf[grep(paste0(format(as.Date(Sys.Date()-7),"%Y"),week(Sys.Date()-7),"CASE"),lf)])
-source(paste0(price_model_loc,"\\function\\fun_model_price.R"),echo=FALSE,encoding="utf-8")
+source(paste0(price_model_loc,"\\function\\fun_model_price_test.R"),echo=FALSE,encoding="utf-8")
 ##########数据输入
 input_orig<-outline_all_fun_input()
 ############################模型链条完善##############################
@@ -23,7 +23,7 @@ input_orig<-outline_all_fun_input()
 loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
 dbSendQuery(loc_channel,'SET NAMES gbk')
 select_input1<-dbFetch(dbSendQuery(loc_channel,"SELECT series_name series,MIN(car_id) select_model_id FROM analysis_che300_cofig_info a
-                                   INNER JOIN (SELECT series_name FROM analysis_wide_table_cous ORDER BY count_s DESC LIMIT 10) b ON a.car_series1=b.series_name
+                                   INNER JOIN (SELECT series_name FROM analysis_wide_table_cous ORDER BY count_s DESC) b ON a.car_series1=b.series_name
                                    GROUP BY series_name;"),-1)
 dbDisconnect(loc_channel)
 ###剔除非训练样本#######
@@ -57,7 +57,7 @@ clusterEvalQ(cl,c(library(RODBC),
                   library(e1071) ,
                   library(tcltk),
                   library(lubridate),
-                  source(paste0(price_model_loc,"\\function\\fun_model_price.R"),echo=FALSE,encoding="utf-8")))
+                  source(paste0(price_model_loc,"\\function\\fun_model_price_test.R"),echo=FALSE,encoding="utf-8")))
 results<-tryCatch(
   {parLapply(cl,x,outline_series_fun_pred)}, 
   warning = function(w) {"出警告啦"}, 
