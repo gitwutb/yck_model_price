@@ -18,18 +18,42 @@ file.remove(lf[grep(paste0(format(as.Date(Sys.Date()-7),"%Y"),week(Sys.Date()-7)
 source(paste0(price_model_loc,"\\function\\fun_model_price_test.R"),echo=FALSE,encoding="utf-8")
 ##########数据输入
 input_orig<-outline_all_fun_input()
+
+#临时
+analysis_wide_table_cous<-dplyr::summarise(group_by(input_orig,yck_seriesid),count_s=n())
+write.csv(analysis_wide_table_cous,paste0(price_model_loc,"\\file\\analysis_wide_table_cous.csv",sep=""),
+          row.names = F,fileEncoding = "UTF-8",quote = F)
+rm(analysis_wide_table_cous)
+#################*********录入本地*********#################
+loc_channel<-dbConnect(MySQL(),user = "root",host="192.168.0.111",password= "000000",dbname="yck-data-center")
+dbSendQuery(loc_channel,'SET NAMES gbk')
+dbSendQuery(loc_channel,"TRUNCATE TABLE analysis_wide_table_cous")
+dbSendQuery(loc_channel,paste0("LOAD DATA LOCAL INFILE '",price_model_loc,"/file/analysis_wide_table_cous.csv'",
+                               " INTO TABLE analysis_wide_table_cous CHARACTER SET utf8 FIELDS TERMINATED BY ',' lines terminated by '\r\n' IGNORE 1 LINES;",sep=""))
+dbDisconnect(loc_channel)
+#################*********录入阿里云*********#################
+loc_channel<-dbConnect(MySQL(),user = "yckdc",host="47.106.189.86",password= "YckDC888",dbname="yck-data-center")
+dbSendQuery(loc_channel,'SET NAMES gbk')
+dbSendQuery(loc_channel,"TRUNCATE TABLE analysis_wide_table_cous")
+dbSendQuery(loc_channel,paste0("LOAD DATA LOCAL INFILE '",price_model_loc,"/file/analysis_wide_table_cous.csv'",
+                               " INTO TABLE analysis_wide_table_cous CHARACTER SET utf8 FIELDS TERMINATED BY ',' lines terminated by '\r\n' IGNORE 1 LINES;",sep=""))
+dbDisconnect(loc_channel)
+
+
 ############################模型链条完善##############################
 ###寻找数据量最大的车型
 loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
 dbSendQuery(loc_channel,'SET NAMES gbk')
-select_input1<-dbFetch(dbSendQuery(loc_channel,"SELECT series_name series,MIN(car_id) select_model_id FROM analysis_che300_cofig_info a
-                                   INNER JOIN (SELECT series_name FROM analysis_wide_table_cous ORDER BY count_s DESC) b ON a.car_series1=b.series_name
-                                   GROUP BY series_name;"),-1)
+select_input1<-dbFetch(dbSendQuery(loc_channel,"SELECT brand_name,a.yck_seriesid,MIN(model_id) select_model_id FROM config_vdatabase_yck_major_info a
+                                   INNER JOIN (SELECT yck_seriesid FROM analysis_wide_table_cous ORDER BY count_s DESC LIMIT 250) b ON a.yck_seriesid=b.yck_seriesid
+                                   GROUP BY a.yck_seriesid;"),-1)
+select_inputout<-dbFetch(dbSendQuery(loc_channel,"SELECT DISTINCT yck_seriesid FROM config_vdatabase_yck_series 
+   WHERE car_level in('豪华车','小型车','中型车','中大型车','紧凑型车','小型SUV','紧凑型SUV','中型SUV','中大型SUV','大型SUV','MPV');"),-1)
 dbDisconnect(loc_channel)
 ###剔除非训练样本#######
 #测试离线代码
 #select_input1<-data.frame(series='凯越',select_model_id='813')
-input_orig<-input_orig%>%filter(series %in% select_input1$series)
+input_orig<-input_orig%>%filter(yck_seriesid %in% select_inputout$yck_seriesid & brand %in% select_input1$brand_name)
 select_input1<-data.frame(select_model_id=select_input1$select_model_id,select_regDate='2017/6/1',select_mile='4',select_partition_month='2018/6/1')
 #############################测试数据1：########################################
 #select_input1<-read.csv(paste0(price_model_loc,"\\file\\","outline_train.csv"),header = T)

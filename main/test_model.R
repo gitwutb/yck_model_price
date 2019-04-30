@@ -11,23 +11,32 @@ library(tcltk)
 library(lubridate)
 library(xlsx)
 library(rlist)
+library(Rtsne)
+library(tidyr)
 ###########加载自定义函数###########paste0(price_model_loc,"\\function")
 price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
 local_defin<-data.frame(user = 'root',host='192.168.0.111',password= '000000',dbname='yck-data-center',stringsAsFactors = F)
 source(paste0(price_model_loc,"\\function\\fun_model_price_test.R"),echo=FALSE,encoding="utf-8")
 #####数据载入######
+# hist(aaaa$residuals,breaks=100,col="red")
+# boxplot(model.svm$residuals)
 #select_input<-read.csv(paste0(price_model_loc,"\\file\\","select_inputst.csv"),header = T)
+#input_tra<-select_input %>% dplyr::mutate(user_id=17,select_classification_operational='非营运',select_classification_car='现车') %>% .[1,]
 loc_channel<-dbConnect(MySQL(),user = "yckdc",host="47.106.189.86",password= "YckDC888",dbname="yck-data-center")
 dbSendQuery(loc_channel,'SET NAMES gbk')
-select_input<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id in (",paste0(216:216,collapse = ','),')')),-1)%>%
+select_input<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id in (",paste0(377:377,collapse = ','),')')),-1)%>%
   dplyr::select(select_model_id,select_regDate,select_mile,select_partition_month)
 dbDisconnect(loc_channel)
 ###-----------第一部分：单一输出--------####
-result_tag<-apply(select_input,1,fun_pred)
+select_input_org<-select_input
+result_tag<-apply(array(1:nrow(select_input_org)),1,fun_pred_round)
 result_tag<-list.rbind(list.rbind(result_tag))
 result_tag<-summarise(group_by(result_tag,select_model_id,select_model_name,select_model_price,select_regDate,
-                               select_partition_month,select_mile),fb_price=mean(fb),pm_price=mean(pm))%>%
+                               select_partition_month,select_mile),fb_price=mean(fb),pm_price=mean(pm),
+                      fb_n=mean(fb_n),pm_n=mean(pm_n),fb_index=mean(fb_index),pm_index=mean(pm_index))%>%
   ungroup()%>%as.data.frame()%>%mutate(fb_monitor=round(fb_price/select_model_price,3),pm_monitor=round(pm_price/select_model_price,3))
+result_tag$fb_index<-cut(abs(result_tag$fb_monitor-result_tag$fb_index),c(-0.001,0.06,0.1,0.15,1),labels=c('高','基本','不可信','错误'))
+result_tag$pm_index<-cut(abs(result_tag$pm_monitor-result_tag$pm_index),c(-0.001,0.06,0.1,0.15,1),labels=c('高','基本','不可信','错误'))
 
 
 ###-----------第二部分：多输出--------####
@@ -43,7 +52,7 @@ price_model_loc<-gsub("\\/main","",tryCatch(dirname(rstudioapi::getActiveDocumen
 source(paste0(price_model_loc,"\\main\\model_interface.R"),echo=FALSE,encoding="utf-8")
 loc_channel<-dbConnect(MySQL(),user = "yckdc",host="47.106.189.86",password= "YckDC888",dbname="yck-data-center")
 dbSendQuery(loc_channel,'SET NAMES gbk')
-input_tra<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id=",223)),-1)%>%
+input_tra<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id=",377)),-1)%>%
   dplyr::select(-user_query_id,-query_statue)
 dbDisconnect(loc_channel)
 return_datatest<-model_interface_datatest(input_tra)

@@ -49,6 +49,8 @@ model_interface_train<-function(input_tra){
   ##保存本地
   yck_project_model_query<-data.frame(user_query_id=max_user_query_id+1,before_query,query_statue=1)
   yck_project_model_query$add_time<-as.character(format(Sys.time(),"%Y/%m/%d %H:%M:%S"))
+  yck_project_model_query<-yck_project_model_query %>% dplyr::select(user_query_id,user_id,select_model_id,select_regDate,select_mile,select_partition_month,
+                                         select_classification_operational,select_classification_car,add_time,query_statue)
   write.csv(yck_project_model_query,paste0(price_model_loc,"/output/result/yck_project_model_query",".csv"),
             row.names = F,fileEncoding = "UTF-8",quote = F)
   dbSendQuery(loc_channel,paste0("LOAD DATA LOCAL INFILE ","'",paste0(price_model_loc,"/output/result/yck_project_model_query",".csv"),"'",

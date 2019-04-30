@@ -11,6 +11,7 @@ library(tcltk)
 library(lubridate)
 library(parallel)
 library(rlist)
+library(tidyr)
 ##########数据输入
 ###########加载自定义函数###########paste0(price_model_loc,"\\function")
 price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
