@@ -715,7 +715,8 @@ model_main<-function(select_input){
   output_pre<-linshi[[1]]%>%dplyr::mutate(query_lab="T")
   result_tag<-dplyr::summarise(group_by(output_pre,user_query_id,query_lab,select_model_id,select_model_name,select_model_price,select_regDate,
                                         select_partition_month,select_mile),fb_price=mean(fb),pm_price=mean(pm),
-                               fb_n=mean(fb_n),pm_n=mean(pm_n),fb_index=mean(fb_index),pm_index=mean(pm_index))%>%
+                               fb_n=mean(fb_n),pm_n=mean(pm_n),fb_index=mean(fb_index),pm_index=mean(pm_index),
+                               r_cor=unique(r_cor),r_fb=mean(r_fb),r_pm=mean(r_pm))%>%
     ungroup()%>%as.data.frame()%>%dplyr::mutate(fb_monitor=round(fb_price/select_model_price,3),pm_monitor=round(pm_price/select_model_price,3))
   
   ################model_main:第三部分：对标车型价格预测###############
@@ -732,7 +733,8 @@ model_main<-function(select_input){
     }
     result_compare<-dplyr::summarise(group_by(match_output_pre,user_query_id,query_lab,select_model_id,select_model_name,select_model_price,
                                               select_regDate,select_partition_month,select_mile),fb_price=mean(fb),pm_price=mean(pm),
-                                     fb_n=mean(fb_n),pm_n=mean(pm_n),fb_index=mean(fb_index),pm_index=mean(pm_index))%>%ungroup()%>%as.data.frame()%>%
+                                     fb_n=mean(fb_n),pm_n=mean(pm_n),fb_index=mean(fb_index),pm_index=mean(pm_index),
+                                     r_cor=unique(r_cor),r_fb=mean(r_fb),r_pm=mean(r_pm))%>%ungroup()%>%as.data.frame()%>%
       dplyr::mutate(fb_monitor=round(fb_price/select_model_price,3),pm_monitor=round(pm_price/select_model_price,3),sum_size=fb_n+pm_n)%>%
       top_n(3,sum_size)%>%dplyr::filter(sum_size>2000)%>%dplyr::select(-sum_size)%>%as.data.frame()
   }else{result_compare<-NULL}
@@ -741,18 +743,13 @@ model_main<-function(select_input){
   result_compare$pm_index<-cut(abs(result_compare$pm_monitor-result_compare$pm_index),c(-0.001,0.06,0.1,0.15,1),labels=c('高','基本','不可信','错误'))
   result_compare<-result_compare%>%dplyr::mutate(recep_price=pm_price*0.94-0.25)
   ##输出处理（标的车型）
-  result_bd<-dplyr::summarise(group_by(output_pre,user_query_id,select_model_name,select_model_price,select_regDate,
-                                       select_partition_month,select_mile,province),fb_price=mean(fb),pm_price=mean(pm),
-                              fb_index=mean(fb_index),pm_index=mean(pm_index))%>%
+  result_bd<-dplyr::summarise(group_by(output_pre,user_query_id,province,select_model_price),fb_price=mean(fb),pm_price=mean(pm))%>%
     ungroup()%>%as.data.frame()%>%dplyr::mutate(fb_monitor=round(fb_price/select_model_price,3),pm_monitor=round(pm_price/select_model_price,3))
-  result_bd$fb_index<-cut(abs(result_bd$fb_monitor-result_bd$fb_index),c(-0.001,0.06,0.1,0.15,1),labels=c('高','基本','不可信','错误'))
-  result_bd$pm_index<-cut(abs(result_bd$pm_monitor-result_bd$pm_index),c(-0.001,0.06,0.1,0.15,1),labels=c('高','基本','不可信','错误'))
-  result_bd<-result_bd%>%dplyr::mutate(recep_price=pm_price*0.94-0.25)
   #按照格式输出
-  result_bd<-result_bd %>% dplyr::select(user_query_id,select_model_name,select_model_price,select_regDate,select_partition_month,
-                                         select_mile,province,fb_price,pm_price,fb_monitor,pm_monitor,fb_index,pm_index,recep_price)
+  result_bd<-result_bd %>% dplyr::select(user_query_id,province,fb_price,pm_price,fb_monitor,pm_monitor)
   result_compare<-result_compare %>% dplyr::select(select_model_id,user_query_id,query_lab,select_model_name,select_model_price,select_regDate,
-                                                   select_partition_month,select_mile,fb_price,pm_price,fb_monitor,pm_monitor,fb_index,pm_index,recep_price)
+                                                   select_partition_month,select_mile,fb_price,pm_price,fb_monitor,pm_monitor,fb_index,pm_index,
+                                                   recep_price,r_cor,r_fb,r_pm)
   
   #********输出未来五个月预测值********##
   select_input_future<-NULL

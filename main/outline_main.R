@@ -12,10 +12,11 @@ library(lubridate)
 library(parallel)
 library(rlist)
 price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
-local_defin<-data.frame(user = 'root',host='192.168.0.111',password= '000000',dbname='yck-data-center',stringsAsFactors = F)
 lf<-list.files(paste0(price_model_loc,"/model_net",sep=""), full.names = T,pattern = ".RData")
 file.remove(lf[grep(paste0(format(as.Date(Sys.Date()-7),"%Y"),week(Sys.Date()-7),"CASE"),lf)])
 source(paste0(price_model_loc,"\\function\\fun_model_price_test.R"),echo=FALSE,encoding="utf-8")
+source(paste0(price_model_loc,"\\function\\fun_mysql_config_up.R"),echo=FALSE,encoding="utf-8")
+local_defin<-fun_mysql_config_up()
 ##########数据输入
 input_orig<-outline_all_fun_input()
 
@@ -25,7 +26,7 @@ write.csv(analysis_wide_table_cous,paste0(price_model_loc,"\\file\\analysis_wide
           row.names = F,fileEncoding = "UTF-8",quote = F)
 rm(analysis_wide_table_cous)
 #################*********录入本地*********#################
-loc_channel<-dbConnect(MySQL(),user = "root",host="192.168.0.111",password= "000000",dbname="yck-data-center")
+loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
 dbSendQuery(loc_channel,'SET NAMES gbk')
 dbSendQuery(loc_channel,"TRUNCATE TABLE analysis_wide_table_cous")
 dbSendQuery(loc_channel,paste0("LOAD DATA LOCAL INFILE '",price_model_loc,"/file/analysis_wide_table_cous.csv'",

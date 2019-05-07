@@ -1,7 +1,6 @@
-#local_defin<-data.frame(user = "yckdc",host="172.18.215.178",password= "YckDC888",dbname="yck-data-center",stringsAsFactors = F)
-local_defin<-data.frame(user = "yckdc",host="47.106.189.86",password= "YckDC888",dbname="yck-data-center",stringsAsFactors = F)
-#local_defin<-data.frame(user = 'root',host='192.168.0.111',password= '000000',dbname='yck-data-center',stringsAsFactors = F)
-#####接口一：模型估价
+price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
+source(paste0(price_model_loc,"\\function\\fun_mysql_config_up.R"),echo=FALSE,encoding="utf-8")
+local_defin<-fun_mysql_config_up()
 #####接口一：模型估价
 interface_out1_model_mprice<-function(parameter_user_query_id,parameter_classification_operational,parameter_model_number){
   options(warn =-1)

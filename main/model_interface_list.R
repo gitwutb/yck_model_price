@@ -1,4 +1,7 @@
 #####历史估值列表
+price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
+source(paste0(price_model_loc,"\\function\\fun_mysql_config_up.R"),echo=FALSE,encoding="utf-8")
+local_defin<-fun_mysql_config_up()
 interface_querylist_history<-function(parameter_user_id){
   options(warn =-1)
   library(reshape2)
@@ -6,10 +9,10 @@ interface_querylist_history<-function(parameter_user_id){
   library(RMySQL)
   library(RJSONIO)
   library(plyr)
-  loc_channel<-dbConnect(MySQL(),user = "yckdc",host="172.18.215.178",password= "YckDC888",dbname="yck-data-center")
+  loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   interface_querylist_history_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_classification_car,che300.model_name select_model_name,select_regDate,select_classification_operational,add_time,query_statue,user_query_id
-  FROM config_che300_major_info che300
+  FROM config_vdatabase_yck_major_info che300
   INNER JOIN yck_project_model_query yck_q ON che300.model_id=yck_q.select_model_id 
     WHERE yck_q.user_id=",parameter_user_id," ORDER BY add_time DESC")),-1)
   dbDisconnect(loc_channel)
