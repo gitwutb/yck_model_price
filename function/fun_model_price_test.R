@@ -254,11 +254,11 @@ fun_pred_compare_line<-function(select_input){
   }else{
     return_config_reg<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT platform_class car_platform_class,parmeter_y,parmeter_m,parmeter_v FROM config_quotes_class
                                                        WHERE car_level= '全级别'
-                                                       AND auto= (SELECT auto FROM config_vdatabase_yck_major_info WHERE model_id =",car_id,")",sep='')),-1)
+                                                       AND auto= (SELECT auto FROM config_vdatabase_yck_major_info WHERE model_id =",select_input$select_model_id,")",sep='')),-1)
   }
   dbDisconnect(loc_channel)
   select_year<-round((as.Date(select_input$select_partition_month)-as.Date(select_input$select_regDate))/365,2)%>%as.character()%>%as.numeric()
-  select_mile<-select_input$select_mile
+  select_mile<-as.numeric(select_input$select_mile)
   return_config_reg<-return_config_reg%>%dplyr::mutate(ss=parmeter_v+select_year*parmeter_y+select_mile*parmeter_m)%>%dcast(.~car_platform_class)%>%.[,-1]
   names(return_config_reg)[names(return_config_reg) == "fb"] = c("fb_index")
   names(return_config_reg)[names(return_config_reg) == "pm"] = c("pm_index")
@@ -771,25 +771,7 @@ model_main<-function(select_input){
     ungroup()%>%as.data.frame()%>%dcast(user_query_id~select_partition_month)
   names(result_future)<-c("user_query_id","now_price","future1","future2","future3","future4","future5")
   #********输出未来五个月预测值********#
-  #存入数据库
-  write.csv(result_bd,paste0(price_model_loc,"/output/result/yck_project_model_result_tag",".csv"),
-            row.names = F,fileEncoding = "UTF-8",quote = F)
-  write.csv(result_compare,paste0(price_model_loc,"/output/result/yck_project_model_result_match",".csv"),
-            row.names = F,fileEncoding = "UTF-8",quote = F)
-  write.csv(result_future,paste0(price_model_loc,"/output/result/yck_project_model_result_future",".csv"),
-            row.names = F,fileEncoding = "UTF-8",quote = F)
-  
-  loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
-  dbSendQuery(loc_channel,'SET NAMES gbk')
-  dbSendQuery(loc_channel,paste0("LOAD DATA LOCAL INFILE ","'",paste0(price_model_loc,"/output/result/yck_project_model_result_match",".csv"),"'",
-                                 " INTO TABLE yck_project_model_result_match CHARACTER SET utf8 FIELDS TERMINATED BY ',' lines terminated by '\r\n' IGNORE 1 LINES;"))
-  dbSendQuery(loc_channel,paste0("LOAD DATA LOCAL INFILE ","'",paste0(price_model_loc,"/output/result/yck_project_model_result_tag",".csv"),"'",
-                                 " INTO TABLE yck_project_model_result_tag CHARACTER SET utf8 FIELDS TERMINATED BY ',' lines terminated by '\r\n' IGNORE 1 LINES;"))
-  dbSendQuery(loc_channel,paste0("LOAD DATA LOCAL INFILE ","'",paste0(price_model_loc,"/output/result/yck_project_model_result_future",".csv"),"'",
-                                 " INTO TABLE yck_project_model_result_future CHARACTER SET utf8 FIELDS TERMINATED BY ',' lines terminated by '\r\n' IGNORE 1 LINES;"))
-  dbSendQuery(loc_channel,paste0("UPDATE yck_project_model_query SET query_statue=2 WHERE user_query_id=",unique(result_compare$user_query_id),";"))
-  dbDisconnect(loc_channel)
-  return(1)
+  return(list(result_bd=result_bd,result_compare=result_compare,result_future=result_future))
 }
 
 

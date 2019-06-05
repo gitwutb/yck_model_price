@@ -25,7 +25,8 @@ local_defin<-fun_mysql_config_up()
 #input_tra<-select_input %>% dplyr::mutate(user_id=17,select_classification_operational='非营运',select_classification_car='现车') %>% .[1,]
 loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
 dbSendQuery(loc_channel,'SET NAMES gbk')
-select_input<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id in (",paste0(377:377,collapse = ','),')')),-1)%>%
+select_input<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_id,select_regDate,select_mile,select_partition_month 
+                                                     FROM yck_project_model_n_query WHERE user_query_id in (",paste0(1140:1140,collapse = ','),')')),-1)%>%
   dplyr::select(select_model_id,select_regDate,select_mile,select_partition_month)
 dbDisconnect(loc_channel)
 ###-----------第一部分：单一输出--------####
