@@ -41,7 +41,8 @@ dbDisconnect(loc_channel)
 if(anyNA(select_input_pre$id_che300)==F){
   select_input_pre<-select_input_pre %>% mutate(select_partition_month=Sys.Date()) %>%
     dplyr::select(select_model_id=id_che300,select_regDate=license_reg_date,select_mile,select_partition_month,select_tname=project_name,yck_car_id=car_id)
-  select_input_pre$select_mile<-4*as.numeric(round(difftime(as_datetime(select_input_pre$select_partition_month),as_datetime(select_input_pre$select_regDate),units="days")/365,2))
+  select_input_pre$select_mile[which(select_input_pre$select_mile==0)]<-
+    4*as.numeric(difftime(as_datetime(select_input_pre$select_partition_month[which(select_input_pre$select_mile==0)]),as_datetime(select_input_pre$select_regDate[which(select_input_pre$select_mile==0)]),units="days")/365)
   select_input<-select_input_pre %>% filter(select_regDate!='1999-01-01')
   #估值
   source(paste0(price_model_loc,"\\main\\model_interface.R"),echo=FALSE,encoding="utf-8")

@@ -14,30 +14,22 @@ library(rlist)
 price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
 lf<-list.files(paste0(price_model_loc,"/model_net",sep=""), full.names = T,pattern = ".RData")
 file.remove(lf[grep(paste0(format(as.Date(Sys.Date()-7),"%Y"),week(Sys.Date()-7),"CASE"),lf)])
-source(paste0(price_model_loc,"\\function\\fun_model_price_test.R"),echo=FALSE,encoding="utf-8")
-source(paste0(price_model_loc,"\\function\\fun_mysql_config_up.R"),echo=FALSE,encoding="utf-8")
+source(paste0(price_model_loc,"\\function\\fun_model_price.R"),echo=FALSE,encoding="utf-8")
+source(paste0(price_model_loc,"/function/yck_base_function.R"),echo=FALSE,encoding="utf-8")
 local_defin<-fun_mysql_config_up()
 ##########数据输入
 input_orig<-outline_all_fun_input()
 
 #临时
-analysis_wide_table_cous<-dplyr::summarise(group_by(input_orig,yck_seriesid),count_s=n())
+analysis_wide_table_cous<-dplyr::summarise(group_by(input_orig,yck_seriesid),count_s=n()) %>% as.data.frame()
 write.csv(analysis_wide_table_cous,paste0(price_model_loc,"\\file\\analysis_wide_table_cous.csv",sep=""),
           row.names = F,fileEncoding = "UTF-8",quote = F)
 rm(analysis_wide_table_cous)
 #################*********录入本地*********#################
 loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
 dbSendQuery(loc_channel,'SET NAMES gbk')
-dbSendQuery(loc_channel,"TRUNCATE TABLE analysis_wide_table_cous")
 dbSendQuery(loc_channel,paste0("LOAD DATA LOCAL INFILE '",price_model_loc,"/file/analysis_wide_table_cous.csv'",
-                               " INTO TABLE analysis_wide_table_cous CHARACTER SET utf8 FIELDS TERMINATED BY ',' lines terminated by '\r\n' IGNORE 1 LINES;",sep=""))
-dbDisconnect(loc_channel)
-#################*********录入阿里云*********#################
-loc_channel<-dbConnect(MySQL(),user = "yckdc",host="47.106.189.86",password= "YckDC888",dbname="yck-data-center")
-dbSendQuery(loc_channel,'SET NAMES gbk')
-dbSendQuery(loc_channel,"TRUNCATE TABLE analysis_wide_table_cous")
-dbSendQuery(loc_channel,paste0("LOAD DATA LOCAL INFILE '",price_model_loc,"/file/analysis_wide_table_cous.csv'",
-                               " INTO TABLE analysis_wide_table_cous CHARACTER SET utf8 FIELDS TERMINATED BY ',' lines terminated by '\r\n' IGNORE 1 LINES;",sep=""))
+                               " REPLACE INTO TABLE analysis_wide_table_cous CHARACTER SET utf8 FIELDS TERMINATED BY ',' lines terminated by '\r\n' IGNORE 1 LINES;",sep=""))
 dbDisconnect(loc_channel)
 
 
@@ -46,7 +38,7 @@ dbDisconnect(loc_channel)
 loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
 dbSendQuery(loc_channel,'SET NAMES gbk')
 select_input1<-dbFetch(dbSendQuery(loc_channel,"SELECT brand_name,a.yck_seriesid,MIN(model_id) select_model_id FROM config_vdatabase_yck_major_info a
-                                   INNER JOIN (SELECT yck_seriesid FROM analysis_wide_table_cous ORDER BY count_s DESC LIMIT 250) b ON a.yck_seriesid=b.yck_seriesid
+                                   INNER JOIN (SELECT yck_seriesid FROM analysis_wide_table_cous ORDER BY count_s DESC LIMIT 400) b ON a.yck_seriesid=b.yck_seriesid
                                    GROUP BY a.yck_seriesid;"),-1)
 select_inputout<-dbFetch(dbSendQuery(loc_channel,"SELECT DISTINCT yck_seriesid FROM config_vdatabase_yck_series 
    WHERE car_level in('豪华车','小型车','中型车','中大型车','紧凑型车','小型SUV','紧凑型SUV','中型SUV','中大型SUV','大型SUV','MPV');"),-1)
@@ -55,17 +47,27 @@ dbDisconnect(loc_channel)
 #测试离线代码
 #select_input1<-data.frame(series='凯越',select_model_id='813')
 input_orig<-input_orig%>%filter(yck_seriesid %in% select_inputout$yck_seriesid & brand %in% select_input1$brand_name)
-select_input1<-data.frame(select_model_id=select_input1$select_model_id,select_regDate='2017/6/1',select_mile='4',select_partition_month='2018/6/1')
+select_input1<-data.frame(select_model_id=select_input1$select_model_id,select_regDate='2017/6/1',select_mile='4',select_partition_month='2018/6/1',yck_seriesid=select_input1$yck_seriesid)
 #############################测试数据1：########################################
 #select_input1<-read.csv(paste0(price_model_loc,"\\file\\","outline_train.csv"),header = T)
 select_input_org<-NULL
 # #########临时调用
-for (i in 1:10) {
+for (i in 1:15) {
   linshi_input<-select_input1
-  linshi_input$select_regDate<-as.character(today())
-  linshi_input$select_partition_month<-as.character(today()+200*i)
+  linshi_input$select_regDate<-as.character(today()-365*3)
+  linshi_input$select_partition_month<-as.character(today()-365*3+150*i)
   select_input_org<-rbind(select_input_org,linshi_input)
 }
+#20190610添加
+ll_unique<-NULL
+for (i in 1:nrow(select_input_org)) {
+  case<-fun_parameter_ym(select_input_org$select_partition_month[i],select_input_org$select_regDate[i])$case
+  model_code<-paste0(select_input_org$yck_seriesid[i],"T",paste0(format(as.Date(Sys.Date()),"%Y"),week(Sys.Date())),"CASE",case,sep="")%>%toupper()
+  ll_unique<-c(ll_unique,model_code)
+}
+select_input_org<-select_input_org %>% dplyr::mutate(ll_unique=ll_unique) %>% 
+  group_by(ll_unique) %>% dplyr::filter(select_partition_month==max(select_partition_month)) %>% 
+  as.data.frame() %>% dplyr::select(-yck_seriesid,-ll_unique)
 rm(select_input1,linshi_input)
 gc()
 select_input_org$select_mile<-3*as.numeric(round(difftime(as_datetime(select_input_org$select_partition_month),as_datetime(select_input_org$select_regDate),units="days")/365,2))
@@ -82,7 +84,7 @@ clusterEvalQ(cl,c(library(RODBC),
                   library(e1071) ,
                   library(tcltk),
                   library(lubridate),
-                  source(paste0(price_model_loc,"\\function\\fun_model_price_test.R"),echo=FALSE,encoding="utf-8")))
+                  source(paste0(price_model_loc,"\\function\\fun_model_price.R"),echo=FALSE,encoding="utf-8")))
 results<-tryCatch(
   {parLapply(cl,x,outline_series_fun_pred)}, 
   warning = function(w) {"出警告啦"}, 

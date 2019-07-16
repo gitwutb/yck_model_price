@@ -1,4 +1,25 @@
 ####相关输出数据接口##
+#####接口0：抬头主要信息
+interface_out0_message<-function(parameter_user_query_id){
+  options(warn =-1)
+  library(reshape2)
+  library(dplyr)
+  library(RMySQL)
+  library(RJSONIO)
+  library(plyr)
+  loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
+  dbSendQuery(loc_channel,'SET NAMES gbk')
+  interface_out0_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_name model_name,a.select_regDate,select_classification_operational,select_classification_car,a.select_model_price model_price
+                        from yck_project_model_result_match a
+                                                                INNER JOIN yck_project_model_query b ON a.user_query_id=b.user_query_id
+                                                                WHERE query_lab='T' AND b.user_query_id=",parameter_user_query_id)),-1)
+  dbDisconnect(loc_channel)
+  interface_out0_return<-toJSON(unname(alply(interface_out0_return, 1, identity)))
+  return(interface_out0_return)
+  rm(list = ls(all=T))
+  gc()
+}
+
 #####接口一：模型估价
 interface_out1_model_mprice<-function(parameter_user_query_id,parameter_classification_operational,parameter_model_number){
   options(warn =-1)
@@ -243,7 +264,7 @@ interface_out10_prate<-function(parameter_user_query_id,parameter_classification
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   select_query<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_id FROM yck_project_model_result_match WHERE user_query_id=",parameter_user_query_id)),-1)
-  interface_out10_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT m.brand_name,m.series_name,m.model_year,DATE_FORMAT(mn.update_time,'%Y%m') update_time,ROUND(AVG(bare_discount_rate),2) quotes FROM config_autohome_major_info_tmp m
+  interface_out10_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT m.brand_name,m.series_name,m.model_year,DATE_FORMAT(mn.update_time,'%Y%m') update_time,ROUND(SUM(100*mn.bare_price_mean*mn.total/mn.model_price)/SUM(mn.total),2) quotes FROM config_autohome_major_info_tmp m
                                                                  INNER JOIN (SELECT series_name,MAX(model_year) model_year FROM config_autohome_major_info_tmp WHERE series_name in(SELECT series_name FROM config_plat_id_match a
                                                                  INNER JOIN config_autohome_major_info_tmp b ON a.id_autohome=b.model_id WHERE id_che300 in (",paste0(select_query$select_model_id,collapse = ","),"))
                                                                  GROUP BY series_name) n ON m.series_name=n.series_name AND m.model_year=n.model_year

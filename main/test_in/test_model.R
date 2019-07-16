@@ -14,8 +14,8 @@ library(rlist)
 library(Rtsne)
 library(tidyr)
 ###########加载自定义函数###########paste0(price_model_loc,"\\function")
-price_model_loc<-gsub("\\/main|\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
-source(paste0(price_model_loc,"\\function\\fun_mysql_config_up.R"),echo=FALSE,encoding="utf-8")
+price_model_loc<-gsub("(\\/main|\\/bat).*","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
+source(paste0(price_model_loc,"/function/yck_base_function.R"),echo=FALSE,encoding="utf-8")
 source(paste0(price_model_loc,"\\function\\fun_model_price_test.R"),echo=FALSE,encoding="utf-8")
 local_defin<-fun_mysql_config_up()
 #####数据载入######
@@ -26,7 +26,7 @@ local_defin<-fun_mysql_config_up()
 loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
 dbSendQuery(loc_channel,'SET NAMES gbk')
 select_input<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_id,select_regDate,select_mile,select_partition_month 
-                                                     FROM yck_project_model_n_query WHERE user_query_id in (",paste0(1140:1140,collapse = ','),')')),-1)%>%
+                                                     FROM yck_project_model_n_query WHERE user_query_id in (",paste0(1146:1146,collapse = ','),')')),-1)%>%
   dplyr::select(select_model_id,select_regDate,select_mile,select_partition_month)
 dbDisconnect(loc_channel)
 ###-----------第一部分：单一输出--------####
@@ -49,13 +49,14 @@ for (i in 1:nrow(select_input)) {
 ###-----------第三部分：测试产品模型--------####
 rm(list = ls(all=T))
 gc()
-price_model_loc<-gsub("\\/main","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
+price_model_loc<-gsub("(\\/main|\\/bat).*","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()}))
 source(paste0(price_model_loc,"\\main\\model_interface.R"),echo=FALSE,encoding="utf-8")
 loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
 dbSendQuery(loc_channel,'SET NAMES gbk')
-input_tra<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id=",216)),-1)%>%
+input_tra<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_query WHERE user_query_id=",767)),-1)%>%
   dplyr::select(-user_query_id,-query_statue)
 dbDisconnect(loc_channel)
+select_input<-input_tra %>% dplyr::select(select_model_id,select_regDate,select_mile,select_partition_month)
 return_datatest<-model_interface_datatest(input_tra)
 if(return_datatest=='N'){
   model_interface_train(input_tra)
@@ -64,7 +65,7 @@ if(return_datatest=='N'){
 }
 
 ###output test2###
-parameter_user_query_id=266
+parameter_user_query_id=216
 parameter_classification_operational=input_tra$select_classification_operational 
 parameter_model_number=1
 parameter_province='广东'
