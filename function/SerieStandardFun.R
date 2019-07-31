@@ -19,6 +19,8 @@ main_fun_series_standard<-function(car_id){
               "ieq_multi_function_steering_wheel","st_driver_seat_electric_adjust","mm_bluetooth_carphone",
               "tec_auto_start_stop","tec_panoramic_camera","mm_central_console_color_screen","lt_hid","lt_auto_head_light",
               "lt_led_head_light")
+  #报错输出本身车型
+  output_error<-input_modelname[input_modelname$model_id==car_id,c('model_id','brand_name','series_name','model_name','model_price')]
   ###剔除的变量"st_seats_material"
   ##对标：第一部分：数据清洗##
   input_modelname<-input_modelname[,col_name]
@@ -64,7 +66,6 @@ main_fun_series_standard<-function(car_id){
   for (i in 1:length(col_order)) {
     input_modelname[,col_order[i]]<-factor(input_modelname[,col_order[i]],ordered = T)
   }
-  output_error<-input_modelname[input_modelname$model_id==car_id,c('model_id','brand_name','series_name','model_name','model_price')]
   tryCatch(write.csv(carMatchFun(input_modelname,car_id),paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),row.names = F),
            error=function(e){cat(write.csv(output_error,paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),row.names = F),conditionMessage(e),"\n\n")},
            finally={print("对标OK!")})

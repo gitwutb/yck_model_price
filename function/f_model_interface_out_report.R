@@ -1,12 +1,6 @@
 ####相关输出数据接口##
 #####接口0：抬头主要信息
 interface_out0_message<-function(parameter_user_query_id){
-  options(warn =-1)
-  library(reshape2)
-  library(dplyr)
-  library(RMySQL)
-  library(RJSONIO)
-  library(plyr)
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   interface_out0_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_name model_name,a.select_regDate,select_classification_operational,select_classification_car,a.select_model_price model_price
@@ -14,20 +8,12 @@ interface_out0_message<-function(parameter_user_query_id){
                                                                 INNER JOIN yck_project_model_query b ON a.user_query_id=b.user_query_id
                                                                 WHERE query_lab='T' AND b.user_query_id=",parameter_user_query_id)),-1)
   dbDisconnect(loc_channel)
-  interface_out0_return<-toJSON(unname(alply(interface_out0_return, 1, identity)))
+  interface_out0_return<-RJSONIO::toJSON(unname(plyr::alply(interface_out0_return, 1, identity)))
   return(interface_out0_return)
-  rm(list = ls(all=T))
-  gc()
 }
 
 #####接口一：模型估价
 interface_out1_model_mprice<-function(parameter_user_query_id,parameter_classification_operational,parameter_model_number){
-  options(warn =-1)
-  library(reshape2)
-  library(dplyr)
-  library(RMySQL)
-  library(RJSONIO)
-  library(plyr)
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   interface_out1_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT recep_price,pm_price,fb_price FROM yck_project_model_result_match WHERE  query_lab='T' AND user_query_id=",parameter_user_query_id)),-1)
@@ -41,40 +27,24 @@ interface_out1_model_mprice<-function(parameter_user_query_id,parameter_classifi
     dplyr::mutate(display1=paste0(round(recep_price*0.95,2),"-",round((recep_price+pm_price)/2,2)))%>%
     dplyr::mutate(display2=paste0(round((recep_price+pm_price)/2,2),"-",round((pm_price+fb_price)/2,2)))%>%
     dplyr::mutate(display3=paste0(round((pm_price+fb_price)/2,2),"-",round(round(fb_price*1.05,2),2)))
-  interface_out1_return<-toJSON(unname(alply(interface_out1_return, 1, identity)))
+  interface_out1_return<-RJSONIO::toJSON(unname(plyr::alply(interface_out1_return, 1, identity)))
   #cat(interface_out1_model_mprice)
   return(interface_out1_return)
-  rm(list = ls(all=T))
-  gc()
 }
 
 #####接口二：亮点配置
 interface_out2_detail_th<-function(parameter_user_query_id,parameter_classification_operational,parameter_model_number){
-  options(warn =-1)
-  library(reshape2)
-  library(dplyr)
-  library(RMySQL)
-  library(RJSONIO)
-  library(plyr)
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   select_query<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_id FROM yck_project_model_query WHERE user_query_id=",parameter_user_query_id)),-1)
   interface_out2_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT hl_configs,hl_configc FROM config_vdatabase_yck_major_info WHERE model_id=",select_query$select_model_id)),-1)
   dbDisconnect(loc_channel)
-  interface_out2_return<-toJSON(unname(alply(interface_out2_return, 1, identity)))
+  interface_out2_return<-RJSONIO::toJSON(unname(plyr::alply(interface_out2_return, 1, identity)))
   return(interface_out2_return)
-  rm(list = ls(all=T))
-  gc()
 }
 
 #####接口三：模型价格预测
 interface_out3_model_fprice<-function(parameter_user_query_id,parameter_classification_operational,parameter_model_number){
-  options(warn =-1)
-  library(reshape2)
-  library(dplyr)
-  library(RMySQL)
-  library(RJSONIO)
-  library(plyr)
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   interface_out3_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT * FROM yck_project_model_result_future WHERE user_query_id=",parameter_user_query_id)),-1)
@@ -84,20 +54,12 @@ interface_out3_model_fprice<-function(parameter_user_query_id,parameter_classifi
     interface_out3_return[,-1]<-round(interface_out3_return[,-1]*0.96,2)
   }
   ##量的多少
-  interface_out3_return<-toJSON(unname(alply(interface_out3_return, 1, identity)))
+  interface_out3_return<-RJSONIO::toJSON(unname(plyr::alply(interface_out3_return, 1, identity)))
   return(interface_out3_return)
-  rm(list = ls(all=T))
-  gc()
 }
 
 #####接口四：模型区域价格
 interface_out4_model_diprice<-function(parameter_user_query_id,parameter_classification_operational,parameter_model_number){
-  options(warn =-1)
-  library(reshape2)
-  library(dplyr)
-  library(RMySQL)
-  library(RJSONIO)
-  library(plyr)
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   interface_out4_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT province,fb_price FROM yck_project_model_result_tag WHERE user_query_id=",parameter_user_query_id)),-1)
@@ -107,20 +69,12 @@ interface_out4_model_diprice<-function(parameter_user_query_id,parameter_classif
     interface_out4_return$fb_price<-round(interface_out4_return$fb_price*0.96,2)
   }
   ##量的多少
-  interface_out4_return<-toJSON(unname(alply(interface_out4_return, 1, identity)))
+  interface_out4_return<-RJSONIO::toJSON(unname(plyr::alply(interface_out4_return, 1, identity)))
   return(interface_out4_return)
-  rm(list = ls(all=T))
-  gc()
 }
 
 #####接口五：相关二手车输出，输出价格分布(过去一年)同等车龄
 interface_out5_sh_mprice<-function(parameter_user_query_id,parameter_classification_operational,parameter_model_number){
-  options(warn =-1)
-  library(reshape2)
-  library(dplyr)
-  library(RMySQL)
-  library(RJSONIO)
-  library(plyr)
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   select_query<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_id,DATEDIFF(select_partition_month,select_regDate)/365 user_years FROM yck_project_model_query WHERE user_query_id=",parameter_user_query_id)),-1)
@@ -134,20 +88,12 @@ interface_out5_sh_mprice<-function(parameter_user_query_id,parameter_classificat
   ##月均价格
   interface_out5_return<-interface_out5_return%>%group_by(partition_month,car_platform)%>%dplyr::summarise(quotes=round(mean(quotes),2))%>%
     ungroup()%>%as.data.frame()
-  interface_out5_return<-toJSON(unname(alply(interface_out5_return, 1, identity)))
+  interface_out5_return<-RJSONIO::toJSON(unname(plyr::alply(interface_out5_return, 1, identity)))
   return(interface_out5_return)
-  rm(list = ls(all=T))
-  gc()
 }
 
 #####接口六：二手车价格展示(省份筛选)
 interface_out6_display<-function(parameter_user_query_id,parameter_classification_operational,parameter_model_number,parameter_province){
-  options(warn =-1)
-  library(reshape2)
-  library(dplyr)
-  library(RMySQL)
-  library(RJSONIO)
-  library(plyr)
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   select_query<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_id,select_regDate,select_mile FROM yck_project_model_query WHERE user_query_id=",parameter_user_query_id)),-1)
@@ -168,20 +114,12 @@ interface_out6_display<-function(parameter_user_query_id,parameter_classificatio
   }else{
     interface_out6_return=interface_out6_display_l
   }
-  interface_out6_return<-toJSON(unname(alply(interface_out6_return, 1, identity)))
+  interface_out6_return<-RJSONIO::toJSON(unname(plyr::alply(interface_out6_return, 1, identity)))
   return(interface_out6_return)
-  rm(list = ls(all=T))
-  gc()
 }
 
 #####接口七：详细配置对比
 interface_out7_detail_mth<-function(parameter_user_query_id,parameter_classification_operational,parameter_model_number){
-  options(warn =-1)
-  library(reshape2)
-  library(dplyr)
-  library(RMySQL)
-  library(RJSONIO)
-  library(plyr)
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   select_query<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_id FROM yck_project_model_result_match WHERE user_query_id=",parameter_user_query_id)),-1)
@@ -198,40 +136,24 @@ interface_out7_detail_mth<-function(parameter_user_query_id,parameter_classifica
   interface_out7_return<-merge(interface_out71_return,interface_out70_return,by="model_id")
   if(nrow(interface_out7_return)>1){interface_out7_return<-interface_out7_return[order(interface_out7_return$query_lab,decreasing = T),]}
   interface_out7_return<-interface_out7_return%>%dplyr::select(-model_id,-query_lab)
-  interface_out7_return<-toJSON(unname(alply(interface_out7_return, 1, identity)))
+  interface_out7_return<-RJSONIO::toJSON(unname(plyr::alply(interface_out7_return, 1, identity)))
   return(interface_out7_return)
-  rm(list = ls(all=T))
-  gc()
 }
 
 #####接口八：对标车型价格对比
 interface_out8_match_price<-function(parameter_user_query_id,parameter_classification_operational,parameter_model_number){
-  options(warn =-1)
-  library(reshape2)
-  library(dplyr)
-  library(RMySQL)
-  library(RJSONIO)
-  library(plyr)
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   interface_out8_return<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_name,select_model_price,ROUND(DATEDIFF(select_partition_month,select_regDate)/365,2) user_years,select_mile,recep_price,pm_price,fb_price
                                                                 FROM yck_project_model_result_match WHERE user_query_id=",parameter_user_query_id)),-1)
   dbDisconnect(loc_channel)
   if(nrow(interface_out8_return)>1){interface_out8_return<-interface_out8_return[order(interface_out8_return$select_model_name),]}
-  interface_out8_return<-toJSON(unname(alply(interface_out8_return, 1, identity)))
+  interface_out8_return<-RJSONIO::toJSON(unname(plyr::alply(interface_out8_return, 1, identity)))
   return(interface_out8_return)
-  rm(list = ls(all=T))
-  gc()
 }
 
 #####接口九：销量对比
 interface_out9_sales_new<-function(parameter_user_query_id,parameter_classification_operational,parameter_model_number){
-  options(warn =-1)
-  library(reshape2)
-  library(dplyr)
-  library(RMySQL)
-  library(RJSONIO)
-  library(plyr)
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   select_query<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_id FROM yck_project_model_result_match WHERE user_query_id=",parameter_user_query_id)),-1)
@@ -247,20 +169,12 @@ interface_out9_sales_new<-function(parameter_user_query_id,parameter_classificat
     dplyr::select(-model_id)
   dbDisconnect(loc_channel)
   if(nrow(interface_out9_return)>1){interface_out9_return<-interface_out9_return[order(interface_out9_return$series_name),]}
-  interface_out9_return<-toJSON(unname(alply(interface_out9_return, 1, identity)))
+  interface_out9_return<-RJSONIO::toJSON(unname(plyr::alply(interface_out9_return, 1, identity)))
   return(interface_out9_return)
-  rm(list = ls(all=T))
-  gc()
 }
 
 #####接口十：新款折扣对比
 interface_out10_prate<-function(parameter_user_query_id,parameter_classification_operational,parameter_model_number){
-  options(warn =-1)
-  library(reshape2)
-  library(dplyr)
-  library(RMySQL)
-  library(RJSONIO)
-  library(plyr)
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   select_query<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT select_model_id FROM yck_project_model_result_match WHERE user_query_id=",parameter_user_query_id)),-1)
@@ -272,8 +186,6 @@ interface_out10_prate<-function(parameter_user_query_id,parameter_classification
     dplyr::select(-brand_name)
   dbDisconnect(loc_channel)
   if(nrow(interface_out10_return)>1){interface_out10_return<-interface_out10_return[order(interface_out10_return$series_name),]}
-  interface_out10_return<-toJSON(unname(alply(interface_out10_return, 1, identity)))
+  interface_out10_return<-RJSONIO::toJSON(unname(plyr::alply(interface_out10_return, 1, identity)))
   return(interface_out10_return)
-  rm(list = ls(all=T))
-  gc()
 }

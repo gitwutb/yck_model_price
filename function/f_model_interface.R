@@ -1,7 +1,6 @@
 ##估值接口
 ###接口调用函数
 model_interface_datatest<-function(input_tra){
-  ############################数据输入：########################################
   before_query <-input_tra
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
