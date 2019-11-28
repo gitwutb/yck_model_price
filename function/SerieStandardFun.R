@@ -6,74 +6,85 @@ main_fun_series_standard<-function(car_id){
   dbSendQuery(loc_channel,'SET NAMES gbk')
   input_modelname<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT a.model_id,brand_name,series_name,model_name,model_price,model_year,car_level,auto,
   liter,'' liter_type,discharge_standard,ba_lwh,ba_engine,ba_gearbox,ba_structure,ee_max_mileage,sf_keyless_go,brk_front_tire_specs,
-  ch_4WD_type,oeq_electric_trunk,oeq_aluminum_alloy_wheel,oeq_power_sunroof,oeq_panoramic_sunroof,ieq_reverse_radar,
+  ch_4WD_type,oeq_electric_trunk,oeq_aluminum_alloy_wheel,oeq_power_sunroof,oeq_panoramic_sunroof,ieq_reverse_radar,bd_wheelbase,
   ieq_multi_function_steering_wheel,st_driver_seat_electric_adjust,mm_bluetooth_carphone,tec_auto_start_stop,tec_panoramic_camera,
   mm_central_console_color_screen,lt_hid,lt_auto_head_light,lt_led_head_light FROM config_vdatabase_yck_major_info a 
                             INNER JOIN config_che300_detail_info b ON a.model_id=b.model_id
-                              WHERE a.car_level=(SELECT car_level FROM config_vdatabase_yck_major_info WHERE model_id=",car_id,");")),-1)
+                              WHERE (a.car_level,a.is_green)=(SELECT car_level,is_green FROM config_vdatabase_yck_major_info WHERE model_id=",car_id,");")),-1)
   dbDisconnect(loc_channel)
   col_name<-c("model_id","brand_name","series_name","model_name","model_price","model_year","car_level","auto","liter","liter_type","discharge_standard",
               "ba_lwh","ba_engine","ba_gearbox","ba_structure","ee_max_mileage",
               "sf_keyless_go","brk_front_tire_specs","ch_4WD_type","oeq_electric_trunk",
-              "oeq_aluminum_alloy_wheel","oeq_power_sunroof","oeq_panoramic_sunroof","ieq_reverse_radar",
+              "oeq_aluminum_alloy_wheel","oeq_power_sunroof","oeq_panoramic_sunroof","ieq_reverse_radar","bd_wheelbase",
               "ieq_multi_function_steering_wheel","st_driver_seat_electric_adjust","mm_bluetooth_carphone",
               "tec_auto_start_stop","tec_panoramic_camera","mm_central_console_color_screen","lt_hid","lt_auto_head_light",
               "lt_led_head_light")
   #报错输出本身车型
   output_error<-input_modelname[input_modelname$model_id==car_id,c('model_id','brand_name','series_name','model_name','model_price')]
-  ###剔除的变量"st_seats_material"
-  ##对标：第一部分：数据清洗##
-  input_modelname<-input_modelname[,col_name]
-  input_modelname$liter_type<-input_modelname$ba_engine
-  input_modelname$liter_type<-gsub("\\ .*|[0-9]\\.[0-9]","",input_modelname$liter_type)
-  input_modelname$liter_type<-str_extract(input_modelname$liter_type,"T|L|电动|增程")
-  input_modelname$discharge_standard<-gsub("京|欧","国",input_modelname$discharge_standard)
-  input_modelname$discharge_standard<-gsub("null","",input_modelname$discharge_standard)
-  input_modelname<-separate(input_modelname, col = ba_lwh, into = c("ba_length", "ba_weight","ba_height"), sep = "\\*|\\×")
-  input_modelname<-data.frame(input_modelname[,1:14],
-                   ba_engine1=str_extract(input_modelname$ba_engine,"([0-9]{3}|[0-9]{2})马力"),
-                   ba_engine2=str_extract(input_modelname$ba_engine,"L[2-8]"),
-                   input_modelname[,16:ncol(input_modelname)])
-  input_modelname$ba_engine1<-gsub("马力","",input_modelname$ba_engine1)
-  input_modelname$ba_gearbox<-str_extract(input_modelname$ba_gearbox,"([0-9]{2}|[0-9])挡")
-  input_modelname<-data.frame(input_modelname[,1:17],
-                   ba_struct1=str_extract(input_modelname$ba_structure,"[1-9]门"),
-                   ba_struct2=str_extract(input_modelname$ba_structure,"[1-9]座"),
-                   ba_struct3=str_extract(input_modelname$ba_structure,"三厢|两厢|掀背|(硬|软)顶跑车|(硬|软)顶敞篷|掀背"),
-                   input_modelname[,19:ncol(input_modelname)])
-  input_modelname$brk_front_tire_specs<-gsub("Ｒ","R",input_modelname$brk_front_tire_specs)
-  input_modelname$brk_front_tire_specs<-gsub("Ｐ","",input_modelname$brk_front_tire_specs)
-  input_modelname<-data.frame(input_modelname[,1:22],
-                   brk_front_tire_specs1=str_extract(input_modelname$brk_front_tire_specs,"[0-9]{3}(\\/|)"),
-                   brk_front_tire_specs2=str_extract(input_modelname$brk_front_tire_specs,"(\\/)[0-9]{2}"),
-                   brk_front_tire_specs3=str_extract(input_modelname$brk_front_tire_specs,"R[0-9]{2}"),
-                   input_modelname[,24:ncol(input_modelname)])
-  input_modelname$brk_front_tire_specs1<-gsub("\\/","",input_modelname$brk_front_tire_specs1)
-  input_modelname$brk_front_tire_specs2<-gsub("\\/","",input_modelname$brk_front_tire_specs2)
-  input_modelname<-sapply(input_modelname,as.character)
-  for (i in 1:dim(input_modelname)[2]) {
-    input_modelname[,i][which(is.na(input_modelname[,i]))]<-"-"
+  if(nrow(output_error)==0){
+    loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
+    dbSendQuery(loc_channel,'SET NAMES gbk')
+    output_error<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT model_id,brand_name,series_name,model_name,model_price FROM 
+                                                            config_vdatabase_yck_major_info  WHERE model_id=",car_id,";")),-1)
+    dbDisconnect(loc_channel)
+    write.csv(output_error,paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),row.names = F)
+  }else{
+    ###剔除的变量"st_seats_material"
+    ##对标：第一部分：数据清洗##
+    input_modelname<-input_modelname[,col_name]
+    input_modelname$liter_type<-input_modelname$ba_engine
+    input_modelname$liter_type<-gsub("\\ .*|[0-9]\\.[0-9]","",input_modelname$liter_type)
+    input_modelname$liter_type<-str_extract(input_modelname$liter_type,"T|L|电动|增程")
+    input_modelname$discharge_standard<-gsub("京|欧","国",input_modelname$discharge_standard)
+    input_modelname$discharge_standard<-gsub("null","",input_modelname$discharge_standard)
+    input_modelname<-separate(input_modelname, col = ba_lwh, into = c("ba_length", "ba_weight","ba_height"), sep = "\\*|\\×")
+    input_modelname<-data.frame(input_modelname[,1:14],
+                                ba_engine1=str_extract(input_modelname$ba_engine,"([0-9]{3}|[0-9]{2})马力"),
+                                ba_engine2=str_extract(input_modelname$ba_engine,"L[2-8]"),
+                                input_modelname[,16:ncol(input_modelname)])
+    input_modelname$ba_engine1<-gsub("马力","",input_modelname$ba_engine1)
+    input_modelname$ba_gearbox<-str_extract(input_modelname$ba_gearbox,"([0-9]{2}|[0-9])挡")
+    input_modelname<-data.frame(input_modelname[,1:17],
+                                ba_struct1=str_extract(input_modelname$ba_structure,"[1-9]门"),
+                                ba_struct2=str_extract(input_modelname$ba_structure,"[1-9]座"),
+                                ba_struct3=str_extract(input_modelname$ba_structure,"三厢|两厢|掀背|(硬|软)顶跑车|(硬|软)顶敞篷|掀背"),
+                                input_modelname[,19:ncol(input_modelname)])
+    input_modelname$brk_front_tire_specs<-gsub("Ｒ","R",input_modelname$brk_front_tire_specs)
+    input_modelname$brk_front_tire_specs<-gsub("Ｐ","",input_modelname$brk_front_tire_specs)
+    input_modelname<-data.frame(input_modelname[,1:22],
+                                brk_front_tire_specs1=str_extract(input_modelname$brk_front_tire_specs,"[0-9]{3}(\\/|)"),
+                                brk_front_tire_specs2=str_extract(input_modelname$brk_front_tire_specs,"(\\/)[0-9]{2}"),
+                                brk_front_tire_specs3=str_extract(input_modelname$brk_front_tire_specs,"R[0-9]{2}"),
+                                input_modelname[,24:ncol(input_modelname)])
+    input_modelname$brk_front_tire_specs1<-gsub("\\/","",input_modelname$brk_front_tire_specs1)
+    input_modelname$brk_front_tire_specs2<-gsub("\\/","",input_modelname$brk_front_tire_specs2)
+    input_modelname$bd_wheelbase<-gsub('未知|标配|选配|-','-',input_modelname$bd_wheelbase)
+    input_modelname<-sapply(input_modelname,as.character)
+    for (i in 1:dim(input_modelname)[2]) {
+      input_modelname[,i][which(is.na(input_modelname[,i]))]<-"-"
+    }
+    input_modelname<-data.frame(input_modelname)%>%dplyr::filter(ba_length!='-',ba_length!="1",ba_length!='',ba_weight!='未知',ba_height!='未知',ba_height!='1')
+    input_modelname$ba_length<-as.integer(as.character(input_modelname$ba_length))
+    input_modelname$ba_weight<-as.integer(as.character(input_modelname$ba_weight))
+    input_modelname$ba_height<-as.integer(as.character(input_modelname$ba_height))
+    #变量转换
+    input_modelname$model_price<-as.numeric(as.character(input_modelname$model_price))
+    col_order<-c("model_year","liter","discharge_standard","ba_length","ba_weight","ba_height","ba_engine1",
+                 "ba_engine2","ba_gearbox","ba_struct1","ba_struct2","ee_max_mileage",
+                 "brk_front_tire_specs1","brk_front_tire_specs2","brk_front_tire_specs3","bd_wheelbase")
+    for (i in 1:length(col_order)) {
+      input_modelname[,col_order[i]]<-factor(input_modelname[,col_order[i]],ordered = T)
+    }
+    tryCatch(write.csv(carMatchFun(input_modelname,car_id),paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),row.names = F),
+             error=function(e){cat(write.csv(output_error,paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),row.names = F),conditionMessage(e),"\n\n")},
+             finally={print("对标OK!")})
   }
-  input_modelname<-data.frame(input_modelname)%>%dplyr::filter(ba_length!='-',ba_length!="1",ba_length!='',ba_weight!='未知',ba_height!='未知',ba_height!='1')
-  input_modelname$ba_length<-as.integer(as.character(input_modelname$ba_length))
-  input_modelname$ba_weight<-as.integer(as.character(input_modelname$ba_weight))
-  input_modelname$ba_height<-as.integer(as.character(input_modelname$ba_height))
-  #变量转换
-  input_modelname$model_price<-as.numeric(as.character(input_modelname$model_price))
-  col_order<-c("model_year","liter","discharge_standard","ba_length","ba_weight","ba_height","ba_engine1",
-               "ba_engine2","ba_gearbox","ba_struct1","ba_struct2","ee_max_mileage",
-               "brk_front_tire_specs1","brk_front_tire_specs2","brk_front_tire_specs3")
-  for (i in 1:length(col_order)) {
-    input_modelname[,col_order[i]]<-factor(input_modelname[,col_order[i]],ordered = T)
-  }
-  tryCatch(write.csv(carMatchFun(input_modelname,car_id),paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),row.names = F),
-           error=function(e){cat(write.csv(output_error,paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),row.names = F),conditionMessage(e),"\n\n")},
-           finally={print("对标OK!")})
 }
 #嵌入函数：第二部分：数据选取、对标车型模型构建##
 carMatchFun<-function(input_modelname,car_id){
   set.seed(10)
-  car_select<-input_modelname[input_modelname$model_id==car_id,1:10]
+  car_select<-input_modelname %>% dplyr::filter(model_id==car_id) %>% 
+    dplyr::select(model_id,brand_name,series_name,model_name,model_price,model_year,car_level,auto,liter,liter_type)
   ##条件筛选
   input_filter<-input_modelname%>%dplyr::filter(auto==as.character(car_select$auto),model_price>car_select$model_price-2*(car_select$model_price%/%10)-1,
                            model_price<car_select$model_price+2*(car_select$model_price%/%10)+1,

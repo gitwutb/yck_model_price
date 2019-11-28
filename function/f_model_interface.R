@@ -28,17 +28,11 @@ model_interface_train<-function(input_tra){
   max_user_query_id<-read.table(paste0(price_model_loc,"/file/max_user_query_id.txt")) %>% as.character() %>% as.integer()
   write.table(max_user_query_id+1,paste0(price_model_loc,"/file/max_user_query_id.txt"),row.names = F,col.names = F,append = F)
   if(before_query$select_classification_car=='期车'){before_query$select_mile<-4*as.numeric(round(difftime(as_datetime(before_query$select_partition_month),as_datetime(before_query$select_regDate),units="days")/365,2))}
-  loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
-  dbSendQuery(loc_channel,'SET NAMES gbk')
   yck_project_model_query<-data.frame(user_query_id=max_user_query_id+1,before_query,query_statue=1)
   yck_project_model_query$add_time<-as.character(format(Sys.time(),"%Y/%m/%d %H:%M:%S"))
   yck_project_model_query<-yck_project_model_query %>% dplyr::select(user_query_id,user_id,select_model_id,select_regDate,select_mile,select_partition_month,
                                                                      select_classification_operational,select_classification_car,add_time,query_statue)
-  write.csv(yck_project_model_query,paste0(price_model_loc,"/output/result/yck_project_model_query",max_user_query_id,".csv"),
-            row.names = F,fileEncoding = "UTF-8",quote = F)
-  dbSendQuery(loc_channel,paste0("LOAD DATA LOCAL INFILE ","'",paste0(price_model_loc,"/output/result/yck_project_model_query",max_user_query_id,".csv"),"'",
-                                 " INTO TABLE yck_project_model_query CHARACTER SET utf8 FIELDS TERMINATED BY ',' lines terminated by '\r\n' IGNORE 1 LINES;"))
-  dbDisconnect(loc_channel)
+  fun_mysqlload_add(price_model_loc,local_defin,yck_project_model_query,'yck_project_model_query',max_user_query_id)
   select_input<-yck_project_model_query%>%dplyr::select(user_query_id,select_model_id,select_regDate,select_mile,select_partition_month)
   select_input$select_mile<-as.numeric(select_input$select_mile)
   return_post_model<-tryCatch({model_main(select_input)},
@@ -73,17 +67,11 @@ model_interface_train_yck<-function(input_tra){
   if(length(grep('select_tname',names(before_query)))==0){before_query<-before_query %>% dplyr::mutate(select_tname='PC')}
   if(length(grep('yck_car_id',names(before_query)))==0){before_query<-before_query %>% dplyr::mutate(yck_car_id=0)}
   if(length(grep('query_number',names(before_query)))==0){before_query<-before_query %>% dplyr::mutate(query_number=1)}
-  loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
-  dbSendQuery(loc_channel,'SET NAMES gbk')
   yck_project_model_n_query<-data.frame(user_query_id=max_user_query_id_n+1,before_query,query_statue=1)
   yck_project_model_n_query$add_time<-as.character(format(Sys.time(),"%Y/%m/%d %H:%M:%S"))
   yck_project_model_n_query<-yck_project_model_n_query %>% dplyr::select(user_query_id,user_id,select_tname,yck_car_id,query_number,select_model_id,select_regDate,select_mile,select_partition_month,
-                                                                     select_classification_operational,select_classification_car,add_time,query_statue)
-  write.csv(yck_project_model_n_query,paste0(price_model_loc,"/output/result/yck_project_model_n_query",".csv"),
-            row.names = F,fileEncoding = "UTF-8",quote = F)
-  dbSendQuery(loc_channel,paste0("LOAD DATA LOCAL INFILE ","'",paste0(price_model_loc,"/output/result/yck_project_model_n_query",".csv"),"'",
-                                 " INTO TABLE yck_project_model_n_query CHARACTER SET utf8 FIELDS TERMINATED BY ',' lines terminated by '\r\n' IGNORE 1 LINES;"))
-  dbDisconnect(loc_channel)
+                                                                         select_classification_operational,select_classification_car,add_time,query_statue)
+  fun_mysqlload_add(price_model_loc,local_defin,yck_project_model_n_query,'yck_project_model_n_query',max_user_query_id_n)
   select_input<-yck_project_model_n_query%>%dplyr::select(user_query_id,select_model_id,select_regDate,select_mile,select_partition_month)
   select_input$select_mile<-as.numeric(select_input$select_mile)
   return_post_model<-tryCatch({model_main(select_input)},

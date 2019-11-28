@@ -2,7 +2,7 @@
 fun_yckit_query_project<-function(belong_project){
   loc_channel<-dbConnect(MySQL(),user = local_defin_yy$user,host=local_defin_yy$host,password= local_defin_yy$password,dbname=local_defin_yy$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
-  yck_it_query_project<-dbFetch(dbSendQuery(loc_channel,paste("SELECT a.id query_project,a.project_name,b.id yck_query_id,b.config_id,b.kilometre,DATE_FORMAT(FROM_UNIXTIME(b.license_reg_date),'%Y-%m-%d') license_reg_date,c.autohome_id FROM yck_quote_project a
+  yck_it_query_project<-dbFetch(dbSendQuery(loc_channel,paste("SELECT a.id query_project,a.project_name,b.vin,b.id yck_query_id,b.config_id,b.kilometre,DATE_FORMAT(FROM_UNIXTIME(b.license_reg_date),'%Y-%m-%d') license_reg_date,c.autohome_id FROM yck_quote_project a
                                             INNER JOIN yck_quote_project_cars b ON a.id=b.quote_project_id
                                             INNER JOIN yck_car_basic_config c ON b.config_id=c.id WHERE a.id=",belong_project,";")),-1)
   dbSendQuery(loc_channel,paste0("UPDATE yck_quote_project SET data_quote_status=2 WHERE id=",belong_project))
@@ -26,9 +26,7 @@ fun_yckdc_query_config_id<-function(){
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   new_project_1<-dbFetch(dbSendQuery(loc_channel,"SELECT a.autohome_id,c.model_name model_name_a,c.model_price price_auto
-                                     FROM (SELECT DISTINCT autohome_id FROM yck_tableau_it_regular
-																						UNION
-																						SELECT DISTINCT autohome_id FROM yck_it_query_project) a
+                                     FROM (SELECT DISTINCT autohome_id FROM yck_it_query_project) a
                                      LEFT JOIN yck_it_query_config_id b ON a.autohome_id=b.id_autohome
                                      INNER JOIN config_autohome_major_info_tmp c ON a.autohome_id=c.model_id
                                      WHERE id_che300 IS NULL;"),-1)
@@ -84,7 +82,7 @@ fun_yckit_query_model<-function(belong_project){
       #select_input<-select_input[1:2,]
       yck_it_query_mresult<-NULL
       for (i in 1:nrow(select_input)) {
-        linshi<-tryCatch({fun_pred_future(select_input[i,])},
+        linshi<-tryCatch({fun_pred(select_input[i,])},
                          error=function(e){0},
                          finally={0})
         if(class(linshi)!='numeric'){
@@ -147,7 +145,7 @@ fun_yckit_query_model_replenish<-function(){
       #select_input<-select_input[1:2,]
       yck_it_query_mresult<-NULL
       for (i in 1:nrow(select_input)) {
-        linshi<-tryCatch({fun_pred_future(select_input[i,])},
+        linshi<-tryCatch({fun_pred(select_input[i,])},
                          error=function(e){0},
                          finally={0})
         if(class(linshi)!='numeric'){

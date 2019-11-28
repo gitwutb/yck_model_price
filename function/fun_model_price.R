@@ -2,7 +2,9 @@
 ##********第一部分：模型数据处理、训练等**********##
 ##fun_select_transfor模型使用数据选取##0711修改
 fun_select_transfor<-function(select_input){
-  part_select<-c("SELECT yck_brandid,yck_seriesid,brand_name select_brand,series_name select_series,model_year select_model_year,model_name select_model_name,model_price select_model_price,auto select_auto,car_level select_car_level FROM config_vdatabase_yck_major_info WHERE ")
+  part_select<-c("SELECT yck_brandid,yck_seriesid,brand_name select_brand,series_name select_series,
+                 model_year select_model_year,model_name select_model_name,model_price select_model_price,
+                 auto select_auto,is_green,car_level select_car_level FROM config_vdatabase_yck_major_info WHERE ")
   part_condition<-c("model_id =")
   part_value<-select_input$select_model_id
   part_all<-paste0(part_select,part_condition,part_value)
@@ -14,42 +16,17 @@ fun_select_transfor<-function(select_input){
   select_input_tansfor<-data.frame(input_orig,select_input)
   return(select_input_tansfor)
 }
-##层次二---参数输入：训练模型中车龄及公里数选择
+#层次二---参数输入：训练模型中车龄及公里数选择
 fun_parameter_ym<-function(partition_month,regDate){
   select_user_year<-as.numeric(as.character(round((as.Date(partition_month)-as.Date(regDate))/365,2)))
-  if (select_user_year<=0.5) {
-    case="1"
-    user_years_plower=0
-    user_years_pupper=1
-    mile_plower=0.01
-    mile_pupper=4
-  }else if (select_user_year<1.5){
-    case="2"
-    user_years_plower=0
-    user_years_pupper=3
-    mile_plower=0.01
-    mile_pupper=12
-  }else if (select_user_year<3){
-    case="3"
-    user_years_plower=0.6
-    user_years_pupper=5
-    mile_plower=0.01
-    mile_pupper=20
-  }else if (select_user_year<5){
-    case="4"
-    user_years_plower=2
-    user_years_pupper=8
-    mile_plower=1
-    mile_pupper=25
-  }else {
-    case="5"
-    user_years_plower=3
-    user_years_pupper=15
-    mile_plower=1
-    mile_pupper=30
-  }
+  case="11"
+  user_years_plower=0.1
+  user_years_pupper=15
+  mile_plower=0.01
+  mile_pupper=30
   return(list(user_years_plower=user_years_plower,user_years_pupper=user_years_pupper,mile_plower=mile_plower,mile_pupper=mile_pupper,case=case))
 }
+
 ##本函数为建模数据选取及处理过程####最新修改日期：2018年4月27日（25）
 fun_input_train<-function(input_analysis,select_input_transfor){
   select_brand<-select_input_transfor$select_brand
@@ -87,7 +64,7 @@ fun_input_train<-function(input_analysis,select_input_transfor){
     input_train_one<-input_train_one%>%dplyr::mutate(residuals=aa1$residuals,fit=aa1$fitted.values)%>%dplyr::filter(abs(residuals)<parameter_residuals)
     #----20180711增加（当训练样本过多则选取精度最高的样本）
     parameter_res=parameter_residuals
-    while (nrow(input_train_one)>2500) {
+    while (nrow(input_train_one)>2600) {
       parameter_res=parameter_res-0.002
       input_train_one<-input_train_one%>%dplyr::filter(abs(residuals)<parameter_res)
     }
@@ -103,30 +80,36 @@ fun_input_train<-function(input_analysis,select_input_transfor){
 }
 ##本函数为建模数据选取及处理过程####2018/8/27更改select_partition_month的parti_year为reg_year
 fun_input_test<-function(select_input_transfor){
-  select_brand<-select_input_transfor$select_brand
-  select_series<-select_input_transfor$select_series
-  select_model_year<-select_input_transfor$select_model_year
-  select_model_price<- select_input_transfor$select_model_price
-  select_auto<-select_input_transfor$select_auto
-  select_car_level<-select_input_transfor$select_car_level
-  select_regDate<-as.Date(select_input_transfor$select_regDate)
-  select_mile<-select_input_transfor$select_mile
-  select_partition_month<-as.Date(select_input_transfor$select_partition_month)
+  parameter_monthd<-2
+  input_transfor<-select_input_transfor[rep(1,parameter_monthd*2+1),]
+  input_transfor$select_partition_month<-
+    as.character(as.Date(input_transfor$select_partition_month)+seq(-30*parameter_monthd,30*parameter_monthd,30))
+  input_transfor$select_mile<-select_input_transfor$select_mile/as.numeric(round(difftime(as_datetime(select_input_transfor$select_partition_month),as_datetime(select_input_transfor$select_regDate),units="days")/365,2))*
+    as.numeric(round(difftime(as_datetime(input_transfor$select_partition_month),as_datetime(input_transfor$select_regDate),units="days")/365,2))
+  select_brand<-input_transfor$select_brand
+  select_series<-input_transfor$select_series
+  select_model_year<-input_transfor$select_model_year
+  select_model_price<- input_transfor$select_model_price
+  select_auto<-input_transfor$select_auto
+  select_car_level<-input_transfor$select_car_level
+  select_regDate<-as.Date(input_transfor$select_regDate)
+  select_mile<-input_transfor$select_mile
+  select_partition_month<-as.Date(input_transfor$select_partition_month)
   
   ##测试数据输入-test_input---------0711修改剔除auto和car_level
   level_province<-c("安徽","陕西","上海","湖南","广东","湖北","江苏","广西","浙江","辽宁","北京",
                     "山东","河南","四川","河北","福建","黑龙江","山西","重庆","新疆","贵州","吉林",
                     "云南","海南","天津","江西","甘肃","宁夏","内蒙古","青海","西藏")
   level_platform<-c("che168","rrc","youxin","guazi","yiche","che58","souche","czb","csp")
-  test_input<-data.frame(car_platform=level_platform,
+  test_input<-data.frame(car_platform=rep(level_platform,each=length(select_model_year)),
                          model_year=select_model_year,
                          auto=select_auto,
                          #car_level=select_car_level,
                          model_price=select_model_price,
                          ##1-4万公里rep(1:5,each=6)
                          mile=select_mile,
-                         ##30多个省份rep(unique(select_input_transfor$province),each=6)
-                         province=rep(level_province,each=length(level_platform)),
+                         ##30多个省份rep(unique(input_transfor$province),each=6)
+                         province=rep(level_province,each=length(level_platform)*length(select_model_year)),
                          user_years=as.numeric(as.character(round((select_partition_month-select_regDate)/365,2))),
                          reg_year=str_sub(select_regDate,1,4),
                          #reg_month=str_sub(select_regDate,6,7),
@@ -139,26 +122,59 @@ fun_input_test<-function(select_input_transfor){
 }
 ##fun_model_input模型使用数据选取##
 fun_input<-function(select_input_transfor){
-  part_select<-c("SELECT car_platform,model_year,brand,series,yck_seriesid,auto,regDate,quotes,model_price,mile,province,user_years,a.partition_month FROM analysis_wide_table a WHERE ")
-  part_condition<-c("yck_seriesid =")
-  part_value<-paste0("'",as.character(select_input_transfor$yck_seriesid),"'")
-  part_all<-paste0(part_select,part_condition,part_value)
-  ##数据库查询
+  #20190726样本缺失处理
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
-  input_orig<-dbFetch(dbSendQuery(loc_channel,part_all),-1)
-  #2018/12/20添加(对于样本少数据使用同品牌同级别车代替；若仍不够使用品牌代替)
-  if(nrow(input_orig)<500){
-    series_list<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT DISTINCT yck_seriesid FROM config_vdatabase_yck_major_info
-                                                        WHERE yck_brandid='",as.character(select_input_transfor$yck_brandid),
-                                                        "' AND car_level='",as.character(select_input_transfor$select_car_level),"'")),-1)
-    input_orig<-dbFetch(dbSendQuery(loc_channel,paste0(part_select,"yck_seriesid IN('",paste0(as.character(series_list$yck_seriesid),collapse = "','"),"')")),-1)
-  }
-  #2018/12/20-end
+  seriestandard_list<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT a.*,b.count_s FROM config_match_seriestandard a 
+          LEFT JOIN analysis_wide_table_cous b ON a.yck_seriesid=b.yck_seriesid 
+          WHERE a.bd_yck_seriesid='",as.character(select_input_transfor$yck_seriesid),"' ORDER BY count_p DESC")),-1)
+  series_list<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT DISTINCT c.car_country bd_car_country,a.yck_seriesid,c.car_country,0 count_p,b.count_s FROM config_vdatabase_yck_major_info a 
+                                                INNER JOIN analysis_wide_table_cous b ON a.yck_seriesid=b.yck_seriesid
+                                                INNER JOIN config_vdatabase_yck_brand c ON a.yck_brandid=c.yck_brandid
+                                                  WHERE c.car_country='",as.character(unique(seriestandard_list$bd_car_country)),
+                                                      "' AND a.car_level='",as.character(select_input_transfor$select_car_level),
+                                                      "' AND is_green=",select_input_transfor$is_green," ORDER BY count_s DESC")),-1)
   dbDisconnect(loc_channel)
-  #input_analysis<-input_orig%>%dplyr::filter(car_platform!='czb',car_platform!='souche')
+  seriestandard_list$count_s[is.na(seriestandard_list$count_s)]<-0
+  if(nrow(series_list)>0){ series_list<-data.frame(bd_yck_seriesid=as.character(select_input_transfor$yck_seriesid),series_list) %>% 
+    dplyr::filter(!(yck_seriesid %in% seriestandard_list$yck_seriesid))}
+  seriestandard_list<-rbind(seriestandard_list,series_list)
+  a1<-seriestandard_list %>% dplyr::filter(bd_yck_seriesid==yck_seriesid) %>% dplyr::mutate(sum_code=sum(count_s))
+  if(mean(a1$sum_code)<4000){
+    seriestandard_listt<-seriestandard_list %>% dplyr::filter(bd_car_country==car_country) %>% dplyr::mutate(sum_code=(cumsum(count_s)-4000)/abs(cumsum(count_s)-4000)) %>% 
+      dplyr::mutate(sum_code1=c(-1,sum_code[-length(sum_code)]))
+    n_number<- which(seriestandard_listt$sum_code!=seriestandard_listt$sum_code1)
+    if(length(n_number)>0){a1<-seriestandard_listt[1:n_number,] %>% dplyr::mutate(sum_code=sum(count_s))}else{
+      a1<-seriestandard_list %>% dplyr::filter(bd_car_country==car_country) %>% dplyr::mutate(sum_code=sum(count_s))
+      if(mean(a1$sum_code)<1000){
+        a1<-seriestandard_list %>% dplyr::mutate(sum_code=sum(count_s))
+      }
+    }
+  }
+  series_list_fin<-paste0(as.character(unique(c(select_input_transfor$yck_seriesid,a1$yck_seriesid))),collapse = "','")
+  loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
+  dbSendQuery(loc_channel,'SET NAMES gbk')
+  input_orig<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT car_platform,model_year,brand,series,yck_seriesid,auto,regDate,quotes,
+                    model_price,mile,province,user_years,a.partition_month FROM analysis_wide_table a WHERE  yck_seriesid IN('",series_list_fin,
+                                                     "') AND is_green=",select_input_transfor$is_green)),-1)
+  dbDisconnect(loc_channel)
+  if(nrow(input_orig)<300){
+    para_mprice1<-0.5;para_mprice2<-1.5
+    if(select_input_transfor$is_green==2){para_mprice1<-0.01;para_mprice2<-10}
+    loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
+    dbSendQuery(loc_channel,'SET NAMES gbk')
+    series_list_fin<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT DISTINCT yck_seriesid FROM config_vdatabase_yck_major_info 
+                    WHERE car_level ='",as.character(select_input_transfor$select_car_level),
+                                                            "' AND model_price>",as.numeric(select_input_transfor$select_model_price)*para_mprice1,
+                                                            " AND model_price<",as.numeric(select_input_transfor$select_model_price)*para_mprice2,
+                                                            " AND is_green=",select_input_transfor$is_green)),-1)
+    series_list_fin<-paste0(as.character(series_list_fin$yck_seriesid),collapse = ",")
+    input_orig<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT car_platform,model_year,brand,series,yck_seriesid,auto,regDate,quotes,
+                    model_price,mile,province,user_years,a.partition_month FROM analysis_wide_table a WHERE  yck_seriesid IN('",series_list_fin,
+                                                       "') AND is_green=",select_input_transfor$is_green)),-1) %>% rbind(input_orig) %>% unique()
+    dbDisconnect(loc_channel)
+  }
   input_analysis<-input_orig
-  
   #数据处理##
   input_analysis<-data.frame(input_analysis,quotes_p=round(input_analysis$quotes/input_analysis$model_price,2))
   input_analysis<-input_analysis%>%dplyr::filter(quotes_p>0.05&quotes_p<1.01)
@@ -230,16 +246,16 @@ fun_model_test<-function(select_input_transfor,input_test,model.svm){
                               platform_weight=c(0.25,0.2,0.15,0.1,0.1,0.15,0.05,0.5,0.5))
   test_output$car_platform<-as.character(test_output$car_platform)
   config_platform$car_platform<-as.character(config_platform$car_platform)
+  parameter_month<-nrow(input_test)/nrow(config_platform)/31
   output_final<-inner_join(config_platform,test_output,by="car_platform")%>%
-    dplyr::mutate(price=platform_weight*pre_preds)%>%group_by(province,car_platform_class)%>%dplyr::summarise(preds=sum(price))%>%
+    dplyr::mutate(price=platform_weight*pre_preds)%>%group_by(province,car_platform_class)%>%dplyr::summarise(preds=sum(price)/parameter_month)%>%
     dcast(province~car_platform_class)
   data.frame(select_input_transfor,output_final)
 }
 ##---****提取同级别车的对比参数***---##
 fun_pred_compare_line<-function(select_input){
   sql_config<-paste0("SELECT platform_class car_platform_class,parmeter_y,parmeter_m,parmeter_v FROM config_quotes_class
-                     WHERE car_level= (SELECT car_level FROM config_vdatabase_yck_major_info WHERE model_id =",select_input$select_model_id,")
-                     AND auto= (SELECT auto FROM config_vdatabase_yck_major_info WHERE model_id =",select_input$select_model_id,")",sep='')
+                     WHERE (car_level,auto)= (SELECT car_level,auto FROM config_vdatabase_yck_major_info WHERE model_id =",select_input$select_model_id,")",sep='')
   loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
   dbSendQuery(loc_channel,'SET NAMES gbk')
   return_config_reg<-dbFetch(dbSendQuery(loc_channel,sql_config),-1)
@@ -263,6 +279,7 @@ fun_pred_out<-function(input_train,model.svm,select_input){
   input_train_temp<-input_train %>% dplyr::select(car_platform,quotes) %>% mutate(fitted=model.svm$fitted,residuals=model.svm$residuals)%>%
     dplyr::mutate(car_platform_type=ifelse(car_platform %in% c("czb","csp"),"pm_n","fb_n"))
   sample_size<-input_train_temp%>%group_by(car_platform_type)%>%dplyr::summarise(sample_size=n())%>%as.data.frame()
+  if('pm_n'%in%sample_size$car_platform_type==F){sample_size<-rbind(sample_size,data.frame(car_platform_type='pm_n',sample_size=0))}
   #参数输出一：拟合解释率
   r_cor<-data.frame(r_cor=paste0(round(100*cor(input_train_temp$quotes,input_train_temp$fitted),1),'%'))
   #参数输出二：平均绝对误差（处理后）
@@ -293,155 +310,48 @@ fun_pred_out<-function(input_train,model.svm,select_input){
 fun_pred<-function(select_input){
   select_input_transfor<-fun_select_transfor(select_input)
   case<-fun_parameter_ym(select_input_transfor$select_partition_month,select_input_transfor$select_regDate)$case
-  model_code<-paste0(select_input_transfor$yck_seriesid,"T",paste0(format(as.Date(Sys.Date()),"%Y"),week(Sys.Date())),"CASE",case,sep="")%>%toupper()
+  model_code<-paste0(select_input_transfor$yck_seriesid,"T","IME","CASE",case,sep="")%>%toupper()
   #模型高效处理方法
   input_test<-fun_input_test(select_input_transfor)
-  list_model<-list.files(paste0(price_model_loc,"\\model_net"), full.names = T,pattern = "RData")
-  list_model<-gsub(".*model_net\\/|.RData","",list_model)
+  list_model<-list.files(paste0(price_model_loc,"\\model_net"), full.names = T,pattern = "input_train.RData")
+  list_model<-gsub(".*model_net\\/|input_train.RData","",list_model)
   if(length(grep(model_code,list_model))==0){
     input_analysis<-fun_input(select_input_transfor)
-    if(nrow(input_analysis)<10){
-      print(paste0(select_input_transfor$select_model_name,"车辆信息太少"))
-      output_pre<-NULL
-    }else{
-      input_train<-fun_input_train(input_analysis,select_input_transfor)
-      model.svm<-fun_model_train(input_train,price_model_loc,model_code)
-      output_pre<-fun_model_test(select_input_transfor,input_test,model.svm)
-      return_pred_out<-fun_pred_out(input_train,model.svm,select_input)
-      output_pre<-data.frame(output_pre,return_pred_out)
-    }
-  } else
-  {
+    input_train<-fun_input_train(input_analysis,select_input_transfor)
+    model.svm<-fun_model_train(input_train,price_model_loc,model_code)
+    output_pre<-fun_model_test(select_input_transfor,input_test,model.svm)
+    return_pred_out<-fun_pred_out(input_train,model.svm,select_input)
+    output_pre<-data.frame(output_pre,return_pred_out)
+  }else{
     load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,".RData"))
     load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,"input_train.RData"))
     output_pre<-fun_model_test(select_input_transfor,input_test,model.svm)
     return_pred_out<-fun_pred_out(input_train,model.svm,select_input)
     output_pre<-data.frame(output_pre,return_pred_out)
   }
-  return(list(output_pre=output_pre))
-}
-#在预测基础上求平均-估3月价格（跑价1、2、3、4、5月）
-fun_pred_future<-function(select_input){
-  select_input_org<-select_input[rep(1,5),]
-  select_input_org$select_partition_month<-
-    as.character(as.Date(select_input_org$select_partition_month)+seq(-60,60,30))
-  select_input_org$select_mile<-select_input$select_mile/as.numeric(round(difftime(as_datetime(select_input$select_partition_month),as_datetime(select_input$select_regDate),units="days")/365,2))*
-    as.numeric(round(difftime(as_datetime(select_input_org$select_partition_month),as_datetime(select_input_org$select_regDate),units="days")/365,2))
-  match_output_future<-NULL
-  for (i in 1:nrow(select_input_org)) {
-    linshi<-fun_pred(select_input_org[i,])[[1]]
-    match_output_future<-rbind(match_output_future,linshi)
-  }
-  match_output_future$select_partition_month<-select_input$select_partition_month
-  match_output_future$select_mile<-select_input$select_mile
-  match_output_future_r<-match_output_future %>% dplyr::group_by(province) %>% 
-    dplyr::summarise(fb=mean(fb),pm=mean(pm),r_cor=r_cor[1],r_fb=mean(r_fb),r_pm=mean(r_pm),fb_n=round(mean(fb_n),0),pm_n=round(mean(pm_n),0),
-                     fb_index=mean(fb_index),pm_index=mean(pm_index)) %>% as.data.frame()
-  match_output_future<-data.frame(unique(match_output_future[,1:(which(names(match_output_future)=='province')-1)]),match_output_future_r)
-  return(match_output_future)
+  return(output_pre)
 }
 ##此函数为最终预测调用函数(离线训练-循环)
 fun_pred_round<-function(i){
   select_input<-select_input_org[i,]
-  output_pre<-tryCatch({fun_pred(select_input)},
-           error=function(e){NULL},
-           finally={NULL})
+  output_pre<-tryCatch({outline_series_fun_pred(select_input)},
+                       error=function(e){select_input$select_model_id},
+                       finally={NULL})
   return(output_pre)
 }
 
 ##********第二部分：模型相关输出**********##
-###本函数为查询输出相关信息###
-main_fun_relation_output<-function(id_che300){
-  #id_che300<-c(1150836,33014)
-  #第一部分：获取最新款型折扣率信息
-  new_quotes<-function(id){
-    sql_config<-paste0("SELECT m.brand_name,m.series_name,m.model_year,mn.update_time,ROUND(AVG(bare_discount_rate),2) quotes FROM config_autohome_major_info_tmp m
-                       INNER JOIN (SELECT series_name,MAX(model_year) model_year FROM config_autohome_major_info_tmp WHERE series_name=(SELECT series_name FROM config_plat_id_match a
-                       INNER JOIN config_autohome_major_info_tmp b ON a.id_autohome=b.model_id WHERE id_che300 =",id,") GROUP BY series_name) n ON m.series_name=n.series_name AND m.model_year=n.model_year
-                       INNER JOIN discount_rate_history mn ON mn.model_id=m.model_id GROUP BY series_name,update_time",sep='')
-    loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
-    dbSendQuery(loc_channel,'SET NAMES gbk')
-    config_zk_new<-dbFetch(dbSendQuery(loc_channel,sql_config),-1)
-    dbDisconnect(loc_channel)
-    if(nrow(config_zk_new)==0){
-      config_zk_new<-data.frame(id_che300=id,brand_name='',series_name='',model_year='',update_time='',quotes='')
-    }else{
-      config_zk_new<-data.frame(id_che300=id,config_zk_new)
-    }
-    return(config_zk_new)
-  }
-  ##拼凑
-  config_zk_new<-NULL
-  for (id in id_che300) {
-    config_zk_new<-rbind(config_zk_new,new_quotes(id))
-  }
-  config_zk_new<-dcast(config_zk_new,id_che300+brand_name+series_name+model_year~update_time)
-  if(length(grep("Var.5",names(config_zk_new)))==1){
-    config_zk_new<-config_zk_new%>%dplyr::select(-Var.5)
-  }else{print("")}
-  
-  ##第一部分(2)：获取本款车的折扣信息
-  sql_config<-paste0("SELECT id_che300,id_autohome,c.brand_name,c.series_name,c.model_name,b.update_time,ROUND(AVG(bare_discount_rate),2) quotes
-                     FROM (SELECT id_che300,id_autohome FROM config_plat_id_match WHERE id_che300 in (",paste0(id_che300,sep='',collapse=','),")) a
-                     INNER JOIN  discount_rate_history b ON a.id_autohome=b.model_id
-                     INNER JOIN  config_autohome_major_info_tmp c ON a.id_autohome=c.model_id
-                     GROUP BY id_che300,id_autohome,series_name,model_name,update_time",sep='')
-  loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
-  dbSendQuery(loc_channel,'SET NAMES gbk')
-  config_zk<-dbFetch(dbSendQuery(loc_channel,sql_config),-1)
-  dbDisconnect(loc_channel)
-  if(nrow(config_zk)==0){
-    config_zk=data.frame(out="无")
-  }else{config_zk=dcast(config_zk,id_che300+id_autohome+brand_name+series_name+model_name~update_time)}
-  
-  
-  
-  ##第二部分：获取亮点配置
-  sql_config<-paste0("SELECT a.model_id,b.model_name,ba_level,ba_engine,ba_gearbox,ba_lwh,ba_structure,eng_emission,brk_front_tire_specs,
-                     tec_panoramic_camera,tec_auto_start_stop,oeq_power_sunroof,oeq_panoramic_sunroof,oeq_aluminum_alloy_wheel,
-                     oeq_electric_trunk,sf_keyless_go,ieq_multi_function_steering_wheel,st_seats_material,
-                     st_driver_seat_electric_adjust,st_front_passenger_seat_electric_adjust,mm_central_console_color_screen,
-                     mm_bluetooth_carphone,lt_led_head_light,ac_type FROM config_che300_detail_info a
-                     INNER JOIN config_vdatabase_yck_major_info b ON a.model_id=b.model_id WHERE b.model_id in (",paste0(id_che300,sep='',collapse=','),")",sep='')
-  loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
-  dbSendQuery(loc_channel,'SET NAMES gbk')
-  config_pz<-dbFetch(dbSendQuery(loc_channel,sql_config),-1)
-  dbDisconnect(loc_channel)
-  names(config_pz)<-c("id_che300","车名","级别","发动机","变速箱","长*宽*高(mm)","车身结构","环保标准","前轮胎规格",
-                      "全景摄像头","发动机启停技术","电动天窗","全景天窗","铝合金轮圈","电动后备厢",
-                      "无钥匙启动系统","多功能方向盘","座椅材质","主驾驶座电动调节","副驾驶座电动调节",
-                      "中控台彩色大屏","蓝牙/车载电话","LED日间行车灯","空调控制方式")
-  
-  
-  
-  ##第三部分：获取车系销量数据（由于各个平台车系各异，且不尽规范，此处有待优化）
-  sql_xl1<-paste0("SELECT c300.model_id,c300.series_name,stat_date,salesNum FROM config_plat_id_match a
-                  INNER JOIN config_souhu_major_info b ON a.id_souhu=b.model_id
-                  INNER JOIN spider_salesnum_souhu c ON b.series_id=c.series_id
-                  INNER JOIN config_vdatabase_yck_major_info c300 ON a.id_che300=c300.model_id
-                  WHERE id_che300 in (",paste0(id_che300,sep='',collapse=','),")",sep='')
-  sql_xl2<-paste0("SELECT model_id,a.series_name,stat_date,salesNum FROM config_vdatabase_yck_major_info a 
-                  LEFT JOIN config_series_id_match b ON a.series_id=b.series_id_300
-                  LEFT JOIN spider_salesnum_souhu c ON c.series_id=b.series_id_sohu WHERE model_id in (",paste0(id_che300,sep='',collapse=','),")",sep='')
-  sql_xl<-paste0(sql_xl1," UNION ",sql_xl2)
-  loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
-  dbSendQuery(loc_channel,'SET NAMES gbk')
-  config_xl<-dbFetch(dbSendQuery(loc_channel,sql_xl),-1)
-  dbDisconnect(loc_channel)
-  config_xl<-config_xl%>%dplyr::filter(stat_date>2013)%>%unique()%>%dcast(model_id+series_name~stat_date,mean,margins="salesNum")
-  return(list(config_pz=config_pz,config_xl=config_xl,config_zk=config_zk,config_zk_new=config_zk_new))
-}
-
-
 ##综合输出（产品）##
 model_main<-function(select_input){
   car_id<-select_input$select_model_id
-  ##model_main:第一部分：对标车型##
+  ##model_main:第一部分：对标车型##-需要定期维护list_matchfile.csv
   ##对标车型输出（提升效率：查询是否有过对标车型）（注意：为保证对标车型时效性，定期清理对标结果output的csv文件）
-  list_matchfile<-list.files(paste0(price_model_loc,"\\output\\relation"), full.names = T,pattern = ".csv")
-  list_matchfile<-gsub(".*output\\\\relation\\/|.csv","",list_matchfile)
+  list_matchfile<-read.csv(paste0(price_model_loc,"/output/relation/list_matchfile.csv"),header = T,sep = ",") %>% .[[1]] %>% as.numeric()
   if(length(which(list_matchfile==car_id))==0){
     main_fun_series_standard(car_id)
+    list_matchfile<-data.frame(model_id=unique(c(list_matchfile,car_id)))
+    write.csv(list_matchfile,paste0(price_model_loc,"/output/relation/list_matchfile.csv"),
+              row.names = F,fileEncoding = "UTF-8",quote = F)
   }
   car_match<- read.csv(paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),header = T,sep = ",")%>%
     dplyr::filter(model_id!=car_id)
@@ -457,7 +367,7 @@ model_main<-function(select_input){
   
   ##model_main:第二部分：对应价格预测##
   ##1.价格预测（当样本量可信度较低时调用对标车）#
-  output_pre<-fun_pred_future(select_input)%>%dplyr::mutate(query_lab="T")
+  output_pre<-fun_pred(select_input)%>%dplyr::mutate(query_lab="T")
   result_tag<-dplyr::summarise(group_by(output_pre,user_query_id,query_lab,select_model_id,select_model_name,select_model_price,select_regDate,
                                         select_partition_month,select_mile),fb_price=mean(fb),pm_price=mean(pm),
                                fb_n=mean(fb_n),pm_n=mean(pm_n),fb_index=mean(fb_index),pm_index=mean(pm_index),
@@ -472,7 +382,7 @@ model_main<-function(select_input){
     select_input_db<-data.frame(user_query_id=select_input$user_query_id,select_model_id=car_match$model_id,select_input[,-c(1:2)])
     match_output_pre<-NULL
     for (i in 1:nrow(select_input_db)) {
-      linshi1<-fun_pred_future(select_input_db[i,])%>%dplyr::mutate(query_lab="F")
+      linshi1<-fun_pred(select_input_db[i,])%>%dplyr::mutate(query_lab="F")
       match_output_pre<-rbind(match_output_pre,linshi1)
     }
     result_compare<-dplyr::summarise(group_by(match_output_pre,user_query_id,query_lab,select_model_id,select_model_name,select_model_price,
@@ -507,7 +417,7 @@ model_main<-function(select_input){
   
   match_output_future<-NULL
   for (i in 1:nrow(select_input_future)) {
-    linshi1<-fun_pred_future(select_input_future[i,])
+    linshi1<-fun_pred(select_input_future[i,])
     match_output_future<-rbind(match_output_future,linshi1)
   }
   result_future<-dplyr::summarise(group_by(match_output_future,user_query_id,select_partition_month),fb_price=round(mean(fb),2))%>%
@@ -517,70 +427,13 @@ model_main<-function(select_input){
   return(list(result_bd=result_bd,result_compare=result_compare,result_future=result_future))
 }
 
-
 ##********第三部分：模型离线训练函数**********##
-#fun_model_input模型使用数据选取#
-outline_all_fun_input<-function(){
-  part_select<-c("SELECT car_platform,model_year,brand,series,yck_seriesid,auto,regDate,quotes,model_price,mile,province,user_years,a.partition_month FROM analysis_wide_table a")
-  #测试离线代码
-  #part_select<-c("SELECT car_platform,model_year,brand,series,yck_seriesid,auto,regDate,quotes,model_price,mile,province,user_years,a.partition_month FROM analysis_wide_table a where series='凯越'")
-  ##数据库查询
-  loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
-  dbSendQuery(loc_channel,'SET NAMES gbk')
-  input_orig<-dbFetch(dbSendQuery(loc_channel,part_select),-1)
-  dbDisconnect(loc_channel)
-  
-  #数据处理#
-  input_orig<-data.frame(input_orig,quotes_p=round(input_orig$quotes/input_orig$model_price,2))
-  input_orig<-input_orig%>%dplyr::filter(quotes_p>0.05&quotes_p<0.95)
-  input_orig<-input_orig%>%dplyr::filter(user_years<1|quotes_p<1)
-  input_orig<-input_orig%>%dplyr::filter(regDate>'2000-01-01' & regDate!='NA')
-  input_orig<-data.frame(input_orig,reg_year=str_sub(input_orig$regDate,1,4),
-                         reg_month=str_sub(input_orig$regDate,6,7),
-                         parti_year=str_sub(input_orig$partition_month,1,4),
-                         parti_month=str_sub(input_orig$partition_month,5,6))
-  return(input_orig)
-}
-##fun_model_input模型使用数据选取##
-outline_series_fun_input<-function(select_input_transfor){
-  part_value<-as.character(select_input_transfor$yck_seriesid)
-  input_analysis<-input_orig%>%dplyr::filter(yck_seriesid==part_value)
-  if(nrow(input_analysis)<500){
-    loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
-    dbSendQuery(loc_channel,'SET NAMES gbk')
-    series_list<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT DISTINCT yck_seriesid FROM config_vdatabase_yck_major_info
-                                                        WHERE yck_brandid='",as.character(select_input_transfor$yck_brandid),
-                                                        "' AND car_level='",as.character(select_input_transfor$select_car_level),"'")),-1)
-    dbDisconnect(loc_channel)
-    input_analysis<-input_orig%>%dplyr::filter(yck_seriesid %in% series_list$yck_seriesid)
-  }
-  return(input_analysis)
-}
-##此函数为最终预测调用函数(离线训练)
-outline_series_fun_pred<-function(i){
-  select_input<-select_input_org[i,]
+outline_series_fun_pred<-function(select_input){
   select_input_transfor<-fun_select_transfor(select_input)
   case<-fun_parameter_ym(select_input_transfor$select_partition_month,select_input_transfor$select_regDate)$case
-  model_code<-paste0(select_input_transfor$yck_seriesid,"T",paste0(format(as.Date(Sys.Date()+1),"%Y"),week(Sys.Date()+1)),"CASE",case,sep="")%>%toupper()
-  #模型高效处理方法
-  input_test<-fun_input_test(select_input_transfor)
-  list_model<-list.files(paste0(price_model_loc,"\\model_net"), full.names = T,pattern = "RData")
-  list_model<-gsub(".*model_net\\/|.RData","",list_model)
-  if(length(grep(model_code,list_model))==0){
-    input_analysis<-outline_series_fun_input(select_input_transfor)
-    if(nrow(input_analysis)<10){
-      print(paste0(select_input_transfor$select_model_name,"车辆信息太少"))
-      return(list(output_pre=NULL))
-    }else{
-      #20180720修改#
-      input_train<-fun_input_train(input_analysis,select_input_transfor)
-      model.svm<-fun_model_train(input_train,price_model_loc,model_code)
-      output_pre<-data.frame(a=1)
-      return(list(output_pre=output_pre))
-    }
-  } else
-  {
-    output_pre<-data.frame(a=2)
-    return(list(output_pre=output_pre))
-  }
+  model_code<-paste0(select_input_transfor$yck_seriesid,"T","IME","CASE",case,sep="")%>%toupper()
+  input_analysis<-fun_input(select_input_transfor)
+  input_train<-fun_input_train(input_analysis,select_input_transfor)
+  model.svm<-fun_model_train(input_train,price_model_loc,model_code)
+  return('ok')
 }

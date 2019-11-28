@@ -12,7 +12,7 @@ interface_querylist_history<-function(parameter_user_id){
   }else{
     interface_querylist_history_return<-data.frame(order_number=c(1:nrow(interface_querylist_history_return)),interface_querylist_history_return)%>%
       dplyr::mutate(query_statue_m=query_statue)
-    }
+  }
   interface_querylist_history_return<-RJSONIO::toJSON(unname(plyr::alply(interface_querylist_history_return, 1, identity)))
   return(interface_querylist_history_return)
 }
