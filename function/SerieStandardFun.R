@@ -9,7 +9,7 @@ main_fun_series_standard<-function(car_id){
   ch_4WD_type,oeq_electric_trunk,oeq_aluminum_alloy_wheel,oeq_power_sunroof,oeq_panoramic_sunroof,ieq_reverse_radar,bd_wheelbase,
   ieq_multi_function_steering_wheel,st_driver_seat_electric_adjust,mm_bluetooth_carphone,tec_auto_start_stop,tec_panoramic_camera,
   mm_central_console_color_screen,lt_hid,lt_auto_head_light,lt_led_head_light FROM config_vdatabase_yck_major_info a 
-                            INNER JOIN config_che300_detail_info b ON a.model_id=b.model_id
+                            INNER JOIN config_vdatabase_yck_detail_info b ON a.model_id=b.model_id
                               WHERE (a.car_level,a.is_green)=(SELECT car_level,is_green FROM config_vdatabase_yck_major_info WHERE model_id=",car_id,");")),-1)
   dbDisconnect(loc_channel)
   col_name<-c("model_id","brand_name","series_name","model_name","model_price","model_year","car_level","auto","liter","liter_type","discharge_standard",
