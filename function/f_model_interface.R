@@ -2,18 +2,18 @@
 #产品调用
 model_interface_train<-function(input_tra){
   # 数据输入：#
-  before_query <-input_tra
-  max_user_query_id<-read.table(paste0(price_model_loc,"/file/max_user_query_id.txt")) %>% as.character() %>% as.integer()
-  write.table(max_user_query_id+1,paste0(price_model_loc,"/file/max_user_query_id.txt"),row.names = F,col.names = F,append = F)
-  if(before_query$select_classification_car=='期车'){before_query$select_mile<-4*as.numeric(round(difftime(as_datetime(before_query$select_partition_month),as_datetime(before_query$select_regDate),units="days")/365,2))}
-  yck_project_model_query<-data.frame(user_query_id=max_user_query_id+1,before_query,query_statue=1)
-  yck_project_model_query$add_time<-as.character(format(Sys.time(),"%Y/%m/%d %H:%M:%S"))
-  yck_project_model_query<-yck_project_model_query %>% dplyr::select(user_query_id,user_id,select_model_id,select_regDate,select_mile,select_partition_month,
-                                                                     select_classification_operational,select_classification_car,add_time,query_statue)
-  fun_mysqlload_add(price_model_loc,local_defin,yck_project_model_query,'yck_project_model_query',max_user_query_id)
-  select_input<-yck_project_model_query%>%dplyr::select(user_query_id,select_model_id,select_regDate,select_mile,select_partition_month)
+  # before_query <-input_tra
+  # max_user_query_id<-read.table(paste0(price_model_loc,"/file/max_user_query_id.txt")) %>% as.character() %>% as.integer()
+  # write.table(max_user_query_id+1,paste0(price_model_loc,"/file/max_user_query_id.txt"),row.names = F,col.names = F,append = F)
+  # if(before_query$select_classification_car=='期车'){before_query$select_mile<-4*as.numeric(round(difftime(as_datetime(before_query$select_partition_month),as_datetime(before_query$select_regDate),units="days")/365,2))}
+  # yck_project_model_query<-data.frame(user_query_id=max_user_query_id+1,before_query,query_statue=1)
+  # yck_project_model_query$add_time<-as.character(format(Sys.time(),"%Y/%m/%d %H:%M:%S"))
+  # yck_project_model_query<-yck_project_model_query %>% dplyr::select(user_query_id,user_id,select_model_id,select_regDate,select_mile,select_partition_month,
+  #                                                                    select_classification_operational,select_classification_car,add_time,query_statue)
+  # fun_mysqlload_add(price_model_loc,local_defin,yck_project_model_query,'yck_project_model_query',max_user_query_id)
+  # select_input<-yck_project_model_query%>%dplyr::select(user_query_id,select_model_id,select_regDate,select_mile,select_partition_month)
   
-  select_input<-select_input%>%dplyr::select(user_query_id,select_model_id,select_regDate,select_mile,select_partition_month)
+  select_input<-input_tra%>%dplyr::select(user_query_id,select_model_id,select_regDate,select_mile,select_partition_month)
   select_input$select_mile<-as.numeric(select_input$select_mile)
   return_post_model<-tryCatch({model_main(select_input,"")},
                               error=function(e){3},
@@ -52,12 +52,20 @@ model_interface_train_yck<-function(input_tra){
 
 #后台性调用:车源估值调用(手工车源-参数输入调用接口)
 model_interface_train_yckdc<-function(input_parameter){
- if(input_parameter==0){
-   select_input<-fun_mysqlload_query(local_defin,'SELECT * FROM yck_project_temp_input')
-   select_input<-select_input %>% mutate(user_id=1,add_time=Sys.time())
-   for (i in 1:nrow(select_input)) {
-     model_interface_train_yck(select_input[i,])
-   }
-   fun_mailsend("YCK手工车源车源估值专属",'项目估值完成，请查看报告')
- }else{fun_mailsend("YCK手工车源车源估值专属",'重新输入正确的参数：0')}
+  if(input_parameter==0){
+    select_input<-fun_mysqlload_query(local_defin,'SELECT * FROM yck_project_temp_input')
+    select_input<-select_input %>% mutate(user_id=1,add_time=Sys.time())
+    for (i in 1:nrow(select_input)) {
+      model_interface_train_yck(select_input[i,])
+    }
+    fun_mailsend("YCK手工车源车源估值专属",'项目估值完成，请查看报告')
+  }else{fun_mailsend("YCK手工车源车源估值专属",'重新输入正确的参数：0')}
+}
+
+#YCKDC估值测试调用
+model_interface_test_yckdc<-function(select_model_id,select_regDate,select_mile,select_partition_month,uni_id=1){
+  select_input<-data.frame(select_model_id=select_model_id,select_regDate=select_regDate,select_mile=select_mile,
+                           select_partition_month=select_partition_month,uni_id=uni_id)
+  return_price<-fun_pred(select_input) %>% dplyr::select(uni_id,select_model_id,province,fb,pm,r_cor,r_fb,r_pm,fb_n,pm_n,fb_index,pm_index)
+  return(return_price=RJSONIO::toJSON(unname(plyr::alply(return_price, 1, identity))))
 }

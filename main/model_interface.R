@@ -19,14 +19,11 @@ price_model_loc<-gsub("(\\/main|\\/bat).*","",tryCatch(dirname(rstudioapi::getAc
 source(paste0(price_model_loc,"/function/yck_base_function.R"),echo=FALSE,encoding="utf-8")
 source(paste0(price_model_loc,"/function/fun_model_price_test.R"),echo=FALSE,encoding="utf-8")
 source(paste0(price_model_loc,"/function/yckit_project_user.R"),echo=FALSE,encoding="utf-8")
-local_defin<-fun_mysql_config_up()
+local_defin<-fun_mysql_config_up("47")
 source(paste0(price_model_loc,"/function/f_model_interface.R"),echo=FALSE,encoding="utf-8")
 source(paste0(price_model_loc,"/function/SerieStandardFun.R"),echo=FALSE,encoding="utf-8")
-local_defin_yy<-data.frame(user = 'root',host='192.168.0.111',password= '000000',dbname='yck',stringsAsFactors = F)
-#local_defin_yy<<-data.frame(user = 'data',host='www.youcku.com',password= '6wrzfhG',dbname='yck',stringsAsFactors = F)
-
 
 ##可售/不可售接口调用
-local_defin_yun_it<<-data.frame(user = "data",host="120.79.98.108",password= "543asdfQ",dbname="yck",stringsAsFactors = F)
-local_file<-paste0(price_model_loc,"/main_dctoit_prj")
-source(paste0(local_file,"\\cfun_yck_itd_cars_salable.R"),echo=FALSE,encoding="utf-8")
+sqllogin_salarable_dc<-fun_mysql_config_up("10")
+sqllogin_salarable_yck<<-fun_mysql_config_up('yckt')
+source(paste0(price_model_loc,"/main/main_dctoit_prj/cfun_yck_itd_cars_salable.R"),echo=FALSE,encoding="utf-8")
