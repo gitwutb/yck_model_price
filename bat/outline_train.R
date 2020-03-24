@@ -1,2 +1,0 @@
-source(paste0(gsub("\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()})),'/main/outline_main.R',sep=""),echo=TRUE,encoding="utf-8")
-source(paste0(gsub("\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()})),'/bat/config_match_seriestandard.R',sep=""),echo=TRUE,encoding="utf-8")

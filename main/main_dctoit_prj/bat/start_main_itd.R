@@ -1,1 +1,0 @@
-source(paste0(gsub("\\/bat","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()})),'/yckit_saling_NY.R',sep=""),echo=TRUE,encoding="utf-8")

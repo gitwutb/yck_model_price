@@ -1,0 +1,1 @@
+source(paste0(gsub("\\/bat.*","",tryCatch(dirname(rstudioapi::getActiveDocumentContext()$path),error=function(e){getwd()})),'/main/main_elsefun_bat/bat_modelTrainMain_1d.R',sep=""),echo=TRUE,encoding="utf-8")

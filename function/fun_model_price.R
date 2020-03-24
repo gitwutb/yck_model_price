@@ -201,8 +201,8 @@ fun_model_train<-function(input_train,price_model_loc,model_code){
   model.svm <- e1071::svm(quotes~., input_train,gamma=0.02) 
   #preds <- predict(model.svm, input_train)
   input_train<-input_train %>% dplyr::select(car_platform,quotes)
-  save(model.svm,file=paste0(price_model_loc,"\\model_net\\",model_code,".RData"))
-  save(input_train,file=paste0(price_model_loc,"\\model_net\\",model_code,"input_train.RData"))
+  save(model.svm,file=paste0(price_model_loc,"/model_net/",model_code,".RData"))
+  save(input_train,file=paste0(price_model_loc,"/model_net/",model_code,"input_train.RData"))
   return(model.svm)
 }
 ##本函数为测试模型：输入--测试数据-模型结构，输出结果##输出由综合输出一个值变为输出两个值（拍卖/发布）
@@ -287,15 +287,15 @@ fun_pred<-function(select_input){
   model_code<-paste0(select_input_transfor$yck_seriesid,"T","IME","CASE",case,sep="")%>%toupper()
   #模型高效处理方法
   input_test<-fun_input_test(select_input_transfor)
-  list_model<-list.files(paste0(price_model_loc,"\\model_net"), full.names = T,pattern = "input_train.RData")
-  list_model<-gsub(".*model_net\\/|input_train.RData","",list_model)
+  list_model<-list.files(paste0(price_model_loc,"/model_net"), full.names = T,pattern = "input_train.RData")
+  list_model<-gsub(".*model_net//|input_train.RData","",list_model)
   if(length(grep(model_code,list_model))==0){
     input_analysis<-fun_input(select_input_transfor)
     input_train<-fun_input_train(input_analysis,select_input_transfor)
     model.svm<-fun_model_train(input_train,price_model_loc,model_code)
   }else{
-    load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,".RData"))
-    load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,"input_train.RData"))
+    load(paste0(paste0(price_model_loc,"/model_net"),"/",model_code,".RData"))
+    load(paste0(paste0(price_model_loc,"/model_net"),"/",model_code,"input_train.RData"))
   }
   output_pre<-fun_model_test(select_input_transfor,input_test,model.svm)
   return_pred_out<-fun_pred_out(input_train,model.svm,select_input)
@@ -315,11 +315,11 @@ fun_pred_round<-function(i){
 fun_pred_user_match<-function(select_input){
   #对标车型选取
   car_id<-select_input$select_model_id
-  list_matchfile<-tryCatch({car_match<- read.csv(paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),header = T,sep = ",") %>%
+  list_matchfile<-tryCatch({car_match<- read.csv(paste0(price_model_loc,"/output/relation/",car_id,".csv"),header = T,sep = ",") %>%
     dplyr::filter(model_id!=car_id)},error=function(e){return(1)})
   if(class(list_matchfile)!='data.frame'){
     main_fun_series_standard(car_id)
-    car_match<- read.csv(paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),header = T,sep = ",")%>%
+    car_match<- read.csv(paste0(price_model_loc,"/output/relation/",car_id,".csv"),header = T,sep = ",")%>%
       dplyr::filter(model_id!=car_id)
   }
   series_max<-fun_mysqlload_query(local_defin,paste0("SELECT series_name,sum(count_s) cou FROM analysis_wide_table_cous a

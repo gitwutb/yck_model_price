@@ -196,11 +196,12 @@ fun_factor_standar<-function(input_value){
 ##本函数为训练模型：输入ana1，输出模型结构
 fun_model_train<-function(input_train,price_model_loc,model_code){
   ##模型训练
-  model.svm <- e1071::svm(quotes~., input_train,gamma=0.02) 
+  input_train$model_price<-input_train$model_price+runif(length(input_train$car_platform),0.0001,0.0002)
+  model.svm <- e1071::svm(quotes~.,input_train,gamma=0.02) 
   #preds <- predict(model.svm, input_train)
   input_train<-input_train %>% dplyr::select(car_platform,quotes)
-  save(model.svm,file=paste0(price_model_loc,"\\model_net\\",model_code,".RData"))
-  save(input_train,file=paste0(price_model_loc,"\\model_net\\",model_code,"input_train.RData"))
+  save(model.svm,file=paste0(price_model_loc,"/model_net/",model_code,".RData"))
+  save(input_train,file=paste0(price_model_loc,"/model_net/",model_code,"input_train.RData"))
   return(model.svm)
 }
 ##本函数为测试模型：输入--测试数据-模型结构，输出结果##输出由综合输出一个值变为输出两个值（拍卖/发布）
@@ -225,17 +226,12 @@ fun_model_test<-function(select_input_transfor,input_test,model.svm){
 fun_pred_compare_line<-function(select_input){
   sql_config<-paste0("SELECT platform_class car_platform_class,parmeter_y,parmeter_m,parmeter_v FROM config_quotes_class
                      WHERE (car_level,auto)= (SELECT car_level,auto FROM config_vdatabase_yck_major_info WHERE model_id =",select_input$select_model_id,")",sep='')
-  loc_channel<-dbConnect(MySQL(),user = local_defin$user,host=local_defin$host,password= local_defin$password,dbname=local_defin$dbname)
-  dbSendQuery(loc_channel,'SET NAMES gbk')
-  return_config_reg<-dbFetch(dbSendQuery(loc_channel,sql_config),-1)
-  if(nrow(return_config_reg)>0){
-    return_config_reg<-return_config_reg
-  }else{
-    return_config_reg<-dbFetch(dbSendQuery(loc_channel,paste0("SELECT platform_class car_platform_class,parmeter_y,parmeter_m,parmeter_v FROM config_quotes_class
+  return_config_reg<-fun_mysqlload_query(local_defin,sql_config)
+  if(nrow(return_config_reg)<=0){
+    return_config_reg<-fun_mysqlload_query(local_defin,paste0("SELECT platform_class car_platform_class,parmeter_y,parmeter_m,parmeter_v FROM config_quotes_class
                                                               WHERE car_level= '全级别'
-                                                              AND auto= (SELECT auto FROM config_vdatabase_yck_major_info WHERE model_id =",select_input$select_model_id,")",sep='')),-1)
+                                                              AND auto= (SELECT auto FROM config_vdatabase_yck_major_info WHERE model_id =",select_input$select_model_id,")",sep=''))
   }
-  dbDisconnect(loc_channel)
   select_year<-round((as.Date(select_input$select_partition_month)-as.Date(select_input$select_regDate))/365,2)%>%as.character()%>%as.numeric()
   select_mile<-as.numeric(select_input$select_mile)
   return_config_reg<-return_config_reg%>%dplyr::mutate(ss=parmeter_v+select_year*parmeter_y+select_mile*parmeter_m)%>%dcast(.~car_platform_class)%>%.[,-1]
@@ -282,12 +278,12 @@ fun_pred<-function(select_input){
                                                                   auto select_auto,is_green,car_level select_car_level FROM config_vdatabase_yck_major_info WHERE model_id ="),select_input$select_model_id))
   select_input_transfor<-data.frame(select_input_transfor,select_input)
   case<-fun_parameter_ym(select_input_transfor$select_partition_month,select_input_transfor$select_regDate)$case
-  model_code<-paste0(select_input_transfor$yck_seriesid,"T","IME","CASE",case,sep="")%>%toupper()
+  model_code<-paste0(select_input_transfor$yck_seriesid,"G",select_input_transfor$is_green,"CASE",case,sep="")%>%toupper()
   #模型高效处理方法
   input_test<-fun_input_test(select_input_transfor)
-  query_code<-tryCatch({load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,"input_train.RData"))},error=function(e){1})
+  query_code<-tryCatch({load(paste0(paste0(price_model_loc,"/model_net"),"/",model_code,"input_train.RData"))},error=function(e){1})
   if(query_code!=1){
-    load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,".RData"))
+    load(paste0(paste0(price_model_loc,"/model_net"),"/",model_code,".RData"))
   }else{
     input_analysis<-fun_input(select_input_transfor)
     input_train<-fun_input_train(input_analysis,select_input_transfor)
@@ -308,7 +304,8 @@ fun_pred_round<-function(i){
   select_input_transfor<-data.frame(select_input_transfor,select_input_i)
   input_analysis<-fun_input(select_input_transfor)
   ##
-  para_year_mm<-fun_mysqlload_query(local_defin,paste0("SELECT YEAR(NOW())-MIN(model_year)+1 max_y,YEAR(NOW())-MAX(model_year)-2 min_y FROM config_vdatabase_yck_major_info WHERE yck_seriesid ='",select_input_transfor$yck_seriesid,"'"))
+  para_year_mm<-fun_mysqlload_query(local_defin,paste0("SELECT YEAR(NOW())-MIN(model_year)+1 max_y,YEAR(NOW())-MAX(model_year)-2 min_y FROM config_vdatabase_yck_major_info 
+                                                       WHERE yck_seriesid ='",select_input_transfor$yck_seriesid,"'"))
   para_year_min<-min(max(para_year_mm$min_y,1),11)
   para_year_max<-max(min(para_year_mm$max_y,11),1)
   temp_por<-as.Date(select_input_i$select_regDate)+c(ifelse(para_year_min==1,365*0.33,365*para_year_min),365*(para_year_min:para_year_max)) %>% unique()
@@ -325,11 +322,11 @@ fun_pred_round<-function(i){
 fun_pred_user_match<-function(select_input){
   #对标车型选取
   car_id<-select_input$select_model_id
-  list_matchfile<-tryCatch({car_match<- read.csv(paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),header = T,sep = ",") %>%
+  list_matchfile<-tryCatch({car_match<- read.csv(paste0(price_model_loc,"/output/relation/",car_id,".csv"),header = T,sep = ",") %>%
     dplyr::filter(model_id!=car_id)},error=function(e){return(1)})
   if(class(list_matchfile)!='data.frame'){
     main_fun_series_standard(car_id)
-    car_match<- read.csv(paste0(price_model_loc,"\\output\\relation\\",car_id,".csv"),header = T,sep = ",")%>%
+    car_match<- read.csv(paste0(price_model_loc,"/output/relation/",car_id,".csv"),header = T,sep = ",")%>%
       dplyr::filter(model_id!=car_id)
   }
   series_max<-fun_mysqlload_query(local_defin,paste0("SELECT series_name,sum(count_s) cou FROM analysis_wide_table_cous a
@@ -398,12 +395,14 @@ model_main<-function(select_input,p_type=''){
 ##********第三部分：模型离线训练函数**********##
 outline_series_fun_pred<-function(input_analysis,temp_select_input_transfor){
   case<-fun_parameter_ym(temp_select_input_transfor$select_partition_month,temp_select_input_transfor$select_regDate)$case
-  model_code<-paste0(temp_select_input_transfor$yck_seriesid,"T","IME","CASE",case,sep="")%>%toupper()
+  model_code<-paste0(temp_select_input_transfor$yck_seriesid,"G",temp_select_input_transfor$is_green,"CASE",case,sep="")%>%toupper()
   #正式训练时注释下面三行
-  query_code<-tryCatch({load(paste0(paste0(price_model_loc,"\\model_net"),"\\",model_code,"input_train.RData"))},error=function(e){1})
-  if(query_code==1){
-    input_train<-fun_input_train(input_analysis,temp_select_input_transfor)
-    model.svm<-fun_model_train(input_train,price_model_loc,model_code)
-  }
+  # query_code<-tryCatch({load(paste0(paste0(price_model_loc,"/model_net"),"/",model_code,"input_train.RData"))},error=function(e){1})
+  # if(query_code==1){
+  #   input_train<-fun_input_train(input_analysis,temp_select_input_transfor)
+  #   model.svm<-fun_model_train(input_train,price_model_loc,model_code)
+  # }
+  input_train<-fun_input_train(input_analysis,temp_select_input_transfor)
+  model.svm<-fun_model_train(input_train,price_model_loc,model_code)
   return(NULL)
 }

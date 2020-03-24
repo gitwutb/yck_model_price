@@ -48,55 +48,32 @@ evalCompare_fun_yAs<-function(input_path,input_ipOut){
 }
 
 
-##优车库估值分析：已售车估值（增量）(每日更新一次8：10)
-evalMonitor_yckit_sold<-function(input_path,input_ipOut){
-  select_all_col<-fun_mysqlload_query(input_ipOut,"SELECT a.car_id,d.id_che300,a.license_reg_date,a.kilometre,b.sell_time,b.contract_cost,b.deal_price,order_type,
-                                      mention_fee,mention_fee_belong,mention_fee_cost,delivery_fee,delivery_fee_belong,delivery_fee_cost,other_fee,other_fee_belong FROM erp_dw.dwd_cars a 
-                                      INNER JOIN erp_dw.dwd_car_order_cars b ON a.car_id=b.car_id 
-                                      INNER JOIN ods_erp.ods_car_basic_config c ON a.config_id=c.id
-                                      INNER JOIN yckdc_da2_ucar.yck_it_query_config_id d ON c.autohome_id=d.id_autohome 
-                                      LEFT JOIN (SELECT car_id FROM yckdc_da2_ucar.evalmonitor_yckit_sold) s ON a.car_id=s.car_id
-                                      WHERE a.license_reg_date IS NOT NULL AND a.license_reg_date NOT REGEXP '0000' AND s.car_id IS NULL")
-  select_input<- select_all_col %>% dplyr::mutate(select_mile=kilometre/10000,select_partition_month=as.character(as.Date(select_all_col$sell_time))) %>% 
-    dplyr::filter(license_reg_date>='1990-01-01'&select_mile>=0&(as.Date(select_partition_month)-as.Date(license_reg_date)>100))%>%  
-    dplyr::select(select_model_id=id_che300,select_regDate=license_reg_date,select_mile,select_partition_month,car_id)
-  select_else_col<-select_all_col %>% dplyr::select(-id_che300,-license_reg_date,-kilometre,-sell_time)
-  return_df<-NULL
-  for (i in 1:nrow(select_input)) {
-    tm_return_df<-fun_pred(select_input[i,])
-    return_df<-rbind(return_df,tm_return_df)
-    print(i)
-  }
-  return_df<-return_df %>% dplyr::group_by(car_id,select_model_id,select_series,select_model_name,select_model_price,select_regDate,select_mile,
-                                           select_partition_month) %>% dplyr::summarise(yck_fb=mean(fb),yck_pm=mean(pm))%>%ungroup()%>%as.data.frame()
-  return_df<-inner_join(return_df,select_else_col,by='car_id') %>% dplyr::mutate(eval_date=as.character(Sys.Date())) %>% 
-    dplyr::select(car_id,select_model_id,select_series,select_model_name,select_model_price,select_regDate,select_mile,select_partition_month,
-                  yck_fb,yck_pm,contract_cost,deal_price,order_type,mention_fee,mention_fee_belong,
-                  mention_fee_cost,delivery_fee,delivery_fee_belong,delivery_fee_cost,other_fee,other_fee_belong,eval_date)
-  fun_mysqlload_add_upd(input_path,input_ipOut,return_df,'evalmonitor_yckit_sold',0)
-}
-
-##优车库估值分析：在售估值（每周一全刷）（每小时更新一次8：10-22：10）
-evalMonitor_yckit_selling<-function(input_path,input_ipOut){
-  allUpdate_time<-weekdays(Sys.Date())=='星期一'&lubridate::hour(Sys.time())==8
-  ifelse(allUpdate_time,fun_mysqlload_query(input_ipOut,'TRUNCATE yckdc_da2_ucar.evalmonitor_yckit_selling'),1)
-  select_input<-fun_mysqlload_query(input_ipOut,"SELECT a.car_id,d.id_che300,a.license_reg_date,a.kilometre/10000 select_mile,DATE_FORMAT(NOW(),'%Y-%m-%d') select_partition_month,a.province FROM erp_dw.dwd_cars a 
+##优车库估值分析：YCK车估值（增量）(每5分钟更新一次)
+evalMonitor_yckit_selling<-function(input_path,input_ipOut,input_sqlstr){
+  select_car_id<-fun_mysqlload_query(input_ipOut,input_sqlstr)
+  select_input<-fun_mysqlload_query(input_ipOut,paste0("SELECT a.car_id,d.id_che300,a.license_reg_date,a.kilometre/10000 select_mile,
+                                    IF(a.is_sold=0,DATE_FORMAT(NOW(),'%Y-%m-%d'),b.sell_time) select_partition_month,a.province,a.is_sold FROM erp_dw.dwd_cars a 
+                                    LEFT JOIN erp_dw.dwd_car_order_cars b ON a.car_id=b.car_id                                     
                                     INNER JOIN ods_erp.ods_car_basic_config c ON a.config_id=c.id
                                     INNER JOIN yckdc_da2_ucar.yck_it_query_config_id d ON c.autohome_id=d.id_autohome 
-                                    LEFT JOIN yckdc_da2_ucar.evalmonitor_yckit_selling e ON a.car_id=e.car_id 
-                                    WHERE a.operate_status=4 AND e.car_id IS NULL") %>% 
+                                    WHERE a.car_id in(",paste0(select_car_id$car_id,collapse = ','),")")) %>% 
     dplyr::filter(license_reg_date>='1990-01-01'&select_mile>=0&(as.Date(select_partition_month)-as.Date(license_reg_date)>100)) %>% 
-    dplyr::select(select_model_id=id_che300,select_regDate=license_reg_date,select_mile,select_partition_month,car_id,bd_province=province)
+    dplyr::select(select_model_id=id_che300,select_regDate=license_reg_date,select_mile,select_partition_month,car_id,is_sold,bd_province=province)
   if(nrow(select_input)>0){
     return_df<-NULL
     for (i in 1:nrow(select_input)) {
       tm_return_df<-fun_pred(select_input[i,])
       return_df<-rbind(return_df,tm_return_df)
     }
-    return_df_all<-return_df %>% dplyr::group_by(car_id,select_model_id,select_series,select_model_name,select_model_price,select_regDate,select_mile,select_partition_month) %>% 
+    return_df_all<-return_df %>% dplyr::group_by(car_id,select_model_id,select_series,select_model_name,select_model_price,select_regDate,select_mile,select_partition_month,is_sold) %>% 
       dplyr::summarise(yck_fb=round(mean(fb),2),yck_pm=round(mean(pm),2))%>%ungroup()%>%as.data.frame()
     return_df_bdp<-return_df %>% dplyr::filter(bd_province==province) %>% dplyr::select(car_id,bd_province,yck_pm_p=pm)
-    return_df_all<-inner_join(return_df_all,return_df_bdp,by='car_id') %>% dplyr::mutate(eval_date=as.character(Sys.Date()))
-    fun_mysqlload_add(input_path,input_ipOut,return_df_all,'evalmonitor_yckit_selling',0)
+    return_df_all<-left_join(return_df_all,return_df_bdp,by='car_id') %>% dplyr::mutate(eval_date=as.character(Sys.Date()))
+    return_df_all$yck_pm_p[is.na(return_df_all$yck_pm_p)]<-0
+    fun_mysqlload_add_upd(input_path,input_ipOut,return_df_all,'evalmonitor_yckit_selling',0)
+    #存到IT-link数据库
+    return_df_all_it<-return_df_all %>% dplyr::select(car_id,select_model_price,select_regDate,select_mile,select_partition_month,yck_fb,yck_pm,is_sold,eval_date)
+    fun_mysqlload_add_upd(input_path,fun_mysql_config_up('yck'),return_df_all_it,'link.evalmonitor_yckit_detection',0)
+    fun_mysqlload_add_upd(input_path,fun_mysql_config_up('yckt'),return_df_all_it,'link.evalmonitor_yckit_detection',0)
   }
 }

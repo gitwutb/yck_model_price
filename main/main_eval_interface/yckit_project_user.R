@@ -14,10 +14,10 @@ fun_yckit_query_project<-function(belong_project){
 ####*************************step1:IT匹配数据
 fun_yckdc_query_config_id<-function(belong_project){
   ###查看config_plat_id_match的id匹配是否有问题，矫正id匹配再重新运行代码
-  new_project_1<-fun_mysqlload_query(local_defin,paste0("SELECT a.autohome_id,c.model_name model_name_a,c.model_price price_auto
+  new_project_1<-fun_mysqlload_query(local_defin,paste0("SELECT a.autohome_id,c.type_name model_name_a,c.recommend_price price_auto
                                                         FROM (SELECT DISTINCT autohome_id FROM yck_it_query_project WHERE query_project=",belong_project,") a
                                                         LEFT JOIN yck_it_query_config_id b ON a.autohome_id=b.id_autohome
-                                                        INNER JOIN config_autohome_major_info_tmp c ON a.autohome_id=c.model_id
+                                                        INNER JOIN ods_erp.ods_car_basic_config c ON a.autohome_id=c.autohome_id
                                                         WHERE id_che300 IS NULL;"))
   if(length(new_project_1$autohome_id)>0){id_autohome_p<-paste0(new_project_1$autohome_id,collapse = ',')}else{id_autohome_p<-0}
   new_project_2<-fun_mysqlload_query(local_defin,paste0("SELECT a.id_autohome autohome_id,a.id_che300,b.model_price price300,b.model_name FROM config_plat_id_match a
@@ -41,7 +41,14 @@ fun_yckdc_query_config_id<-function(belong_project){
 ####*************************现车估值接口：获取IT系统项目数据
 fun_yckit_query_model<-function(belong_project){
   fun_yckit_query_project(belong_project)
-  re_fun_yckdc_query_config_id<-fun_yckdc_query_config_id(belong_project)
+  #re_fun_yckdc_query_config_id<-fun_yckdc_query_config_id(belong_project)
+  #判断是否有车型匹配失败，需要邮件通知人工维护
+  charSql_query_yckit<-paste0("SELECT a.autohome_id,c.type_name model_name_a,c.recommend_price price_auto
+                                                        FROM (SELECT DISTINCT autohome_id FROM yck_it_query_project WHERE query_project=",belong_project,") a
+                                                        LEFT JOIN yck_it_query_config_id b ON a.autohome_id=b.id_autohome
+                                                        INNER JOIN ods_erp.ods_car_basic_config c ON a.autohome_id=c.autohome_id
+                                                        WHERE id_che300 IS NULL;")
+  addFun_yckit_query_configid(price_model_loc,local_defin,charSql_query_yckit)
   select_input_pre<-fun_mysqlload_query(local_defin,paste0("SELECT b.id_che300,a.kilometre,a.license_reg_date,a.query_project,a.yck_query_id
                                                            FROM yck_it_query_project a
                                                            LEFT JOIN yck_it_query_config_id b ON a.autohome_id=b.id_autohome
