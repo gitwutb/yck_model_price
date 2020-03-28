@@ -1,4 +1,4 @@
-###模型每日离线训练
+###模型每日离线训练intersect函数
 rm(list = ls(all=T))
 gc()
 library(parallel)
@@ -30,46 +30,37 @@ outlineFun_modeltrain<-function(input_path,input_ip){
   stopCluster(cl)
   return(results)
 }
-outlineFun_seriestandard<-function(input_ip){
-  input_id<-fun_mysqlload_query(input_ip,"SELECT DISTINCT model_id from config_vdatabase_yck_major_info a 
-                    WHERE a.yck_seriesid NOT in(SELECT bd_yck_seriesid FROM (SELECT bd_yck_seriesid,COUNT(*) bd_n 
-                                                                             FROM config_match_seriestandard GROUP BY bd_yck_seriesid)s WHERE bd_n!=1)") %>% .[[1]]
-  input_id_series<-fun_mysqlload_query(input_ip,"SELECT model_id model_id1,yck_seriesid,series_name,car_country from config_vdatabase_yck_major_info a
-  INNER JOIN (SELECT DISTINCT yck_brandid,car_country FROM config_vdatabase_yck_brand) b ON a.yck_brandid=b.yck_brandid")
-  
-  if(day(Sys.Date())!=1){
-    fname_csv <- as.numeric(gsub('.csv','',list.files(paste0(price_model_loc,'/output/relation'))))
-    input_id<-setdiff(input_id,fname_csv)
-  }
-  for (i in 1:length(input_id)) {
-    tryCatch({main_fun_series_standard(input_id[i])},
-             error=function(e){3},
-             finally={4})
-  }
-  fname_csv <- as.numeric(gsub('.csv','',list.files(paste0(price_model_loc,'/output/relation'))))
-  fname_csv <- intersect(fname_csv,input_id)
-  if(length(fname_csv)>0){
-    return_bd<-NULL
-    for (i in 1:length(fname_csv)) {
-      temp_file<-read.csv(paste0(price_model_loc,'/output/relation/',fname_csv[i],'.csv'),stringsAsFactors = F) %>% 
-        dplyr::mutate(bd_model_id=as.numeric(gsub('.csv','',fname_csv[i])))
-      return_bd<-rbind(return_bd,temp_file)
+##车系对标计算-车型库/详细配置有更新才执行：保持逻辑一致
+outlineFun_seriestandard<-function(input_path,input_ip){
+  sql_where<-ifelse(day(Sys.Date())==1,"bd_model_id!=model_id","bd_model_id=model_id")
+  input_id<-fun_mysqlload_query(local_defin,paste0("SELECT a.model_id FROM config_vdatabase_yck_major_info a
+                           LEFT JOIN (SELECT DISTINCT bd_model_id FROM config_match_modelstandard WHERE ",sql_where,") b ON a.model_id=b.bd_model_id
+                           WHERE b.bd_model_id IS NULL")) %>% .[[1]]
+  if(length(input_id)>0){
+    for (i in 1:length(input_id)) {
+      tryCatch({main_fun_series_standard(input_id[i])},
+               error=function(e){3},
+               finally={4})
     }
-    config_match_seriestandard<-return_bd %>% dplyr::select(bd_model_id,model_id)
-    config_match_seriestandard<-inner_join(config_match_seriestandard,input_id_series,by=c('bd_model_id'='model_id1')) %>% 
-      dplyr::select(bd_model_id,model_id,bd_yck_seriesid=yck_seriesid,bd_car_country=car_country)
-    config_match_seriestandard<-inner_join(config_match_seriestandard,input_id_series,by=c('model_id'='model_id1'))
-    config_match_seriestandard<-config_match_seriestandard %>% dplyr::group_by(bd_yck_seriesid,bd_car_country,yck_seriesid,car_country) %>% 
-      dplyr::summarise(count_p=n()) %>% as.data.frame()
-    fun_mysqlload_add_upd(price_model_loc,input_ip,config_match_seriestandard,'config_match_seriestandard')
-  }
-  ##将未纳入的车系补充完整
-  fun_mysqlload_query(input_ip,"INSERT INTO config_match_seriestandard SELECT DISTINCT yck_seriesid bd_yck_seriesid,
-                      car_country bd_car_country,yck_seriesid,car_country,1 count_p FROM config_vdatabase_yck_major_info a 
+    ##更新刚运行的车系对标量
+    result_seriestandard<-fun_mysqlload_query(input_ip,paste0("SELECT b.yck_seriesid bd_yck_seriesid,b.car_country bd_car_country,
+                    b.is_green bd_is_green,c.yck_seriesid,c.car_country,count(*) count_p FROM config_match_modelstandard a
+                    INNER JOIN (SELECT m.model_id,m.yck_seriesid,m.is_green,n.car_country FROM config_vdatabase_yck_major_info m
+                                  INNER JOIN config_vdatabase_yck_brand n ON m.brandid=n.brandid) b ON a.bd_model_id=b.model_id
+                    INNER JOIN (SELECT m.model_id,m.yck_seriesid,m.is_green,n.car_country FROM config_vdatabase_yck_major_info m
+                                 INNER JOIN config_vdatabase_yck_brand n ON m.brandid=n.brandid) c ON a.model_id=c.model_id
+                    INNER JOIN (SELECT DISTINCT yck_seriesid FROM config_vdatabase_yck_major_info WHERE model_id in(",paste0(input_id,collapse = ","),")) d ON b.yck_seriesid=d.yck_seriesid
+                    WHERE b.is_green=c.is_green
+                       GROUP BY b.yck_seriesid,b.is_green,b.car_country,c.yck_seriesid,c.car_country"))
+    fun_mysqlload_add_upd(input_path,input_ip,result_seriestandard,'config_match_seriestandard')
+    ##将未纳入的车系补充完整
+    fun_mysqlload_query(input_ip,"INSERT INTO config_match_seriestandard SELECT DISTINCT yck_seriesid bd_yck_seriesid,
+                      car_country bd_car_country,yck_seriesid,car_country,a.is_green bd_is_green,1 count_p FROM config_vdatabase_yck_major_info a 
                       INNER JOIN config_vdatabase_yck_brand b ON a.brandid=b.brandid 
             WHERE a.yck_seriesid NOT in(SELECT DISTINCT bd_yck_seriesid FROM config_match_seriestandard)")
+  }
 }
-outlineFun_seriestandard(local_defin)
+outlineFun_seriestandard(price_model_loc,local_defin)
 outlineFun_modeltrain(price_model_loc,local_defin)
 
 

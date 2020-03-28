@@ -8,11 +8,11 @@ source(paste0(price_model_loc,"/main/model_interface.R"),echo=FALSE,encoding="ut
 #select_input<-read.csv(paste0(price_model_loc,"\\file\\","select_inputst.csv"),header = T)
 #IT现车估值
 select_input<-fun_mysqlload_query(local_defin,paste0("SELECT select_model_id,select_regDate,select_mile,select_partition_month,yck_query_id  
-                                                     FROM yck_it_query_mresult WHERE yck_query_id in (",paste0(c(81860:81860),collapse = ','),')'))%>%
+                                                     FROM yck_it_query_mresult WHERE yck_query_id in (",paste0(c(99712:99712),collapse = ','),')'))%>%
   dplyr::select(select_model_id,select_regDate,select_mile,select_partition_month,yck_query_id)
 #估值产品
 select_input<-fun_mysqlload_query(local_defin,paste0("SELECT select_model_id,select_regDate,select_mile,select_partition_month,user_query_id 
-                                                     FROM yck_project_model_query WHERE user_query_id=",1039))
+                                                     FROM yck_project_model_query WHERE user_query_id=",1349))
 
 ####-----第二部分：估值应用-----####
 childFun_pred_round<-function(i){

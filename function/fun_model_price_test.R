@@ -113,15 +113,17 @@ fun_input_test<-function(select_input_transfor){
 ##fun_model_input模型使用数据选取##
 fun_input<-function(select_input_transfor){
   #20190726样本缺失处理
-  seriestandard_list<-fun_mysqlload_query(local_defin,paste0("SELECT a.*,b.count_s FROM config_match_seriestandard a 
-                                                             LEFT JOIN analysis_wide_table_cous b ON a.yck_seriesid=b.yck_seriesid 
-                                                             WHERE a.bd_yck_seriesid='",as.character(select_input_transfor$yck_seriesid),"' ORDER BY count_p DESC"))
+  seriestandard_list<-fun_mysqlload_query(local_defin,paste0("SELECT a.bd_yck_seriesid,a.bd_car_country,a.yck_seriesid,a.car_country,a.count_p,b.count_s 
+                                                          FROM config_match_seriestandard a 
+                                                             LEFT JOIN analysis_wide_table_cous b ON a.yck_seriesid=b.yck_seriesid AND a.bd_is_green=b.is_green
+                                                             WHERE a.bd_yck_seriesid='",as.character(select_input_transfor$yck_seriesid),
+                                                             "' AND a.bd_is_green=",select_input_transfor$is_green," ORDER BY count_p DESC"))
   series_list<-fun_mysqlload_query(local_defin,paste0("SELECT DISTINCT c.car_country bd_car_country,a.yck_seriesid,c.car_country,0 count_p,b.count_s FROM config_vdatabase_yck_major_info a 
-                                                      INNER JOIN analysis_wide_table_cous b ON a.yck_seriesid=b.yck_seriesid
+                                                      INNER JOIN analysis_wide_table_cous b ON a.yck_seriesid=b.yck_seriesid AND a.is_green=b.is_green
                                                       INNER JOIN config_vdatabase_yck_brand c ON a.yck_brandid=c.yck_brandid
                                                       WHERE c.car_country='",as.character(unique(seriestandard_list$bd_car_country)),
                                                       "' AND a.car_level='",as.character(select_input_transfor$select_car_level),
-                                                      "' AND is_green=",select_input_transfor$is_green," ORDER BY count_s DESC"))
+                                                      "' AND a.is_green=",select_input_transfor$is_green," ORDER BY count_s DESC"))
   seriestandard_list$count_s[is.na(seriestandard_list$count_s)]<-0
   if(nrow(series_list)>0){ series_list<-data.frame(bd_yck_seriesid=as.character(select_input_transfor$yck_seriesid),series_list) %>% 
     dplyr::filter(!(yck_seriesid %in% seriestandard_list$yck_seriesid))}
@@ -158,14 +160,14 @@ fun_input<-function(select_input_transfor){
   input_analysis<-input_orig
   #数据处理##
   input_analysis<-data.frame(input_analysis,quotes_p=round(input_analysis$quotes/input_analysis$model_price,2))
-  input_analysis<-input_analysis%>%dplyr::filter(quotes_p>0.05&quotes_p<1.01)
+  input_analysis<-input_analysis%>%dplyr::filter(quotes_p>0.05&quotes_p<0.95)
   input_analysis<-input_analysis%>%dplyr::filter(user_years<1|quotes_p<1)
   input_analysis<-input_analysis%>%dplyr::filter(regDate>'2000-01-01'&regDate!='NA')
   input_analysis<-data.frame(input_analysis,reg_year=str_sub(input_analysis$regDate,1,4),
                              reg_month=str_sub(input_analysis$regDate,6,7),
                              parti_year=str_sub(input_analysis$partition_month,1,4),
                              parti_month=str_sub(input_analysis$partition_month,5,6))
-  input_analysis<-input_analysis%>%dplyr::filter(user_years>0.1&user_years<18&mile>0.0001&mile<30)
+  input_analysis<-input_analysis%>%dplyr::filter(user_years>0.2&user_years<18&mile>0.0001&mile<30)
   return(input_analysis)
 }
 ##fun_factor_transform用于将一些变量转化为因子变量##20180117--14:00修改model_price为数值型
@@ -321,23 +323,20 @@ fun_pred_round<-function(i){
 ##********第二部分：模型相关输出**********##
 fun_pred_user_match<-function(select_input){
   #对标车型选取
-  car_id<-select_input$select_model_id
-  list_matchfile<-tryCatch({car_match<- read.csv(paste0(price_model_loc,"/output/relation/",car_id,".csv"),header = T,sep = ",") %>%
-    dplyr::filter(model_id!=car_id)},error=function(e){return(1)})
-  if(class(list_matchfile)!='data.frame'){
+  strsql_carmatch<-paste0("SELECT a.model_id,c.count_s FROM config_match_modelstandard a
+                          INNER JOIN config_vdatabase_yck_major_info b ON a.model_id=b.model_id
+                          INNER JOIN analysis_wide_table_cous c ON b.yck_seriesid=c.yck_seriesid AND b.is_green=c.is_green
+                          WHERE a.bd_model_id=",2)
+  list_matchfile<-fun_mysqlload_query(local_defin,strsql_carmatch)
+  if(nrow(list_matchfile)==0){
     main_fun_series_standard(car_id)
-    car_match<- read.csv(paste0(price_model_loc,"/output/relation/",car_id,".csv"),header = T,sep = ",")%>%
-      dplyr::filter(model_id!=car_id)
+    list_matchfile<-fun_mysqlload_query(local_defin,strsql_carmatch)
   }
-  series_max<-fun_mysqlload_query(local_defin,paste0("SELECT series_name,sum(count_s) cou FROM analysis_wide_table_cous a
-                                                     INNER JOIN config_vdatabase_yck_series b ON a.yck_seriesid=b.yck_seriesid
-                                                     WHERE series_name in (","'",paste0(car_match$series_name,collapse = "','",sep=''),"'",") GROUP BY series_name",sep=''))
-  series_max<-series_max%>%dplyr::top_n(4,cou)%>%dplyr::filter(cou>1000)
-  car_match<-car_match%>%dplyr::filter(series_name %in% series_max$series)
+  car_match<-list_matchfile %>% dplyr::top_n(4,count_s)%>%dplyr::filter(count_s>1000 & model_id!=2)
   #对标车型预测
   match_output_pre<-NULL
   if(nrow(car_match)>0){
-    select_input_db<-data.frame(user_query_id=select_input$user_query_id,select_model_id=car_match$model_id,select_input[,-c(1:2)])
+    select_input_db<-data.frame(user_query_id=select_input$user_query_id,select_model_id=car_match$model_id,select_input %>% dplyr::select(-user_query_id,-select_model_id))
     for (i in 1:nrow(select_input_db)) {
       linshi1<-fun_pred(select_input_db[i,])%>%dplyr::mutate(query_lab="F")
       match_output_pre<-rbind(match_output_pre,linshi1)
